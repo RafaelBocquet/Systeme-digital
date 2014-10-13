@@ -11,7 +11,7 @@ type Label = String
 
 type Graph = M.Map Label (S.Set Label)
 
-
+emptyGraph = M.empty
 
 addEdge :: Graph -> Label ->  Label -> Graph
 addEdge graph from to =
