@@ -1,5 +1,9 @@
 {
-module Lexer where
+module Lexer(
+ Tokens(..),
+ Op(..),
+ alexScanTokens)
+ where
 }
 
 %wrapper "basic"
@@ -7,35 +11,37 @@ module Lexer where
 $digit = 0-9
 $alpha = a-z
 
-@var = ($digit | $alpha | _ )+
+@ident = ($digit | $alpha | _ )+
 
 PiliPili :-
 
    $white+                         ;
+   ($digit)+                       {Num . read}
    "INPUT"                         {const INPUT}
    "OUTPUT"                        {const OUTPUT}
    "VAR"                           {const VAR}
    "IN"                            {const IN}
-   (@var " "* "," " "*)+ @var      {IdentList . (splitOn ',') . (filter (/= ' '))}
-   @var                            {Ident}
+   @ident                          {Ident}
    "REG"                           {const REG}
    "XOR"                           {const (BoolOp XOR)}
    "AND"                           {const (BoolOp AND)}
    "NAND"                          {const (BoolOp NAND)}
    "OR"                            {const (BoolOp OR)}
    "="                             {const Eq}
-
+   ":"                             {const Colon}
+   ","                             {const Comma}
+   "CONCAT"                        {const CONCAT}
+   "SLICE"                         {const SLICE}
+   "SELECT"                        {const SELECT}
 
 {
-splitOn _ [] = []
-splitOn x l = 
-        let (l1,l2) = span (/= x) l in
-        l1:(splitOn x (dropWhile (== x) l2))
-
 data Tokens = 
      INPUT | OUTPUT | VAR 
-     | IN    | IdentList [String] | Ident String
-     | REG   | BoolOp Op | Eq
+     | IN    | Ident String
+     | REG   | BoolOp Op | Eq 
+     | Colon | Comma | Num Integer
+     | CONCAT | SLICE | SELECT
+     | NewLine
      deriving (Show,Eq)
 
 data Op = XOR | AND | NAND | OR deriving (Show,Eq)
