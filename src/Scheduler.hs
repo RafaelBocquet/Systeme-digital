@@ -1,3 +1,5 @@
+module Scheduler where
+
 import Parser
 import DepGraph
 
@@ -18,7 +20,7 @@ addDepOne (ident,expr) =
   
 generateDepGraph :: NetL -> Graph
 generateDepGraph net =
-  foldl (flip $) (emptyGraph) $
+  foldl (flip ($)) (emptyGraph) $
   map addDepOne $
   op net
 

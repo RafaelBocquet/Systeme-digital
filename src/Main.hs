@@ -15,8 +15,8 @@ testmain1 =
      return ()
 
 main =
-  do file: <- getArgs
-     handle <- openfile file ReadMode
+  do file:_ <- getArgs
+     handle <- openFile file ReadMode
      content <- hGetContents handle
      let netl = parse $ (alexScanTokens content)
      print $ scheduler netl
