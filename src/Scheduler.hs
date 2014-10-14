@@ -2,6 +2,7 @@ module Scheduler where
 
 import Parser
 import DepGraph
+import Data.List
 
 varUsedIn :: Expr -> [Ident]
 varUsedIn (BOp _ a b) = (argToVar a) ++ (argToVar b)
@@ -20,7 +21,7 @@ addDepOne (ident,expr) =
   
 generateDepGraph :: NetL -> Graph
 generateDepGraph net =
-  foldl (flip ($)) (emptyGraph) $
+  foldl' (flip ($)) (emptyGraph) $
   map addDepOne $
   op net
 
