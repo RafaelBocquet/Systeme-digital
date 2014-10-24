@@ -67,6 +67,7 @@ roots graph =
   M.assocs $ reverseGraph graph
 
 topoSort graph =
+  reverse $ 
   snd $
   execState
   (sequence $
