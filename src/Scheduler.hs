@@ -16,7 +16,7 @@ argToVar _ = []
 
 addDepOne :: Eqtn -> (Graph -> Graph)
 addDepOne (ident,expr) =
-  foldl (\f var -> \g -> (addEdge g ident var)) id $
+  foldl (\f var -> \g -> f (addEdge g ident var)) id $
   varUsedIn expr
   
 generateDepGraph :: NetL -> Graph
