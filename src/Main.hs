@@ -1,6 +1,8 @@
 import Lexer
 import Parser
 import Scheduler
+import Simul
+import Control.Monad.Trans.Reader
 import System.Environment
 import System.IO
 
@@ -15,8 +17,12 @@ testmain1 =
      return ()
 
 main =
-  do file:_ <- getArgs
+  do file:n:_ <- getArgs
      handle <- openFile file ReadMode
      content <- hGetContents handle
-     let netl = parse $ (alexScanTokens content)
-     print $ scheduler netl
+     let net = parse $ (alexScanTokens content)
+     hSetBuffering stdout NoBuffering
+     print (scheduler net)
+     print "***"
+     init <- (initContent net)
+     runReaderT (netLToFn net) init
