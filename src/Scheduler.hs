@@ -14,7 +14,7 @@ varUsedIn (Id a) = argToVar a
 argToVar (Var id) = [id]
 argToVar _ = []
 
-addDepOne :: Eqtn -> (Graph -> Graph)
+addDepOne :: Eqtn -> Graph -> Graph
 addDepOne (ident,expr) =
   foldl (\f var -> \g -> f (addEdge g ident var)) id $
   varUsedIn expr
@@ -30,5 +30,5 @@ scheduler net =
   let g = generateDepGraph net in
   let l = topoSort g in
   concat $
-  map (\l -> filter ((==l) . fst) (op net)) l
+  map (\label -> filter ((==label) . fst) (op net)) l
 
