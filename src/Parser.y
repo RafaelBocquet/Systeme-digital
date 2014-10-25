@@ -56,25 +56,6 @@ eqtns : {- empty -}                { [] }
 
 
 {
-type Ident = String
-
-data NetL = NetL {inp :: [Ident], out :: [Ident], var :: [Atom], op :: [Eqtn]} deriving Show
-
-type Eqtn = (Ident,Expr)
-
-
-data Atom = Wire String | Ribbon String Integer deriving Show
-
-data Arg = Const Integer | Var Ident deriving Show
-
-
-
-data Expr = BOp Op Arg Arg
-          | Select Integer Ident 
-          | Concat Ident Ident
-          | Slice  Integer Integer Ident
-          | Id Arg
-          deriving Show
 
 happyError = error "coincoin"
 }
