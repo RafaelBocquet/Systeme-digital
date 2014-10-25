@@ -1,0 +1,6 @@
+INPUT
+OUTPUT 
+VAR
+  s
+IN
+s = AND 1 0
