@@ -20,9 +20,6 @@ main =
   do file:n:_ <- getArgs
      handle <- openFile file ReadMode
      content <- hGetContents handle
-     let net = parse $ (alexScanTokens content)
+     let net = parse $! (alexScanTokens content)
      hSetBuffering stdout NoBuffering
-     print (scheduler net)
-     print "***"
-     init <- (initContent net)
-     runReaderT (netLToFn net) init
+     runReaderT (simul (read n) net) =<< (initContent net)

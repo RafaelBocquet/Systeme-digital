@@ -2,6 +2,7 @@
 module Parser where
 
 import Lexer
+import NetLAST
 }
 
 %token
