@@ -11,6 +11,7 @@ type Label = String
 
 type Graph = M.Map Label (S.Set Label)
 
+emptyGraph :: M.Map k a
 emptyGraph = M.empty
 
 addEdge :: Graph -> Label ->  Label -> Graph
@@ -46,11 +47,11 @@ cycleDetection graph =
 
 topoSortWithState :: Graph -> Label -> State ((M.Map Label Mark),[Label]) () 
 topoSortWithState graph l =
-  do (marks,lifo) <- get
+  do (marks,_) <- get
      if fromMaybe NotVisited (M.lookup l marks) == Visited
        then return ()
        else do let children = fromMaybe [] (S.toList <$> (M.lookup l graph))
-               sequence $ map (topoSortWithState graph) children
+               _ <- sequence $ map (topoSortWithState graph) children
                modify $ (M.insert l Visited) *** (l:)
                return ()
 
@@ -60,12 +61,14 @@ reverseGraph graph =
   concat $
   M.elems $
   M.mapWithKey (\k s -> map ((,) k) (S.toList s)) graph 
-     
+
+roots :: Graph -> [Label]
 roots graph =
   map fst $
   filter ((== S.empty) . snd) $
   M.assocs $ reverseGraph graph
 
+topoSort :: Graph -> [Label]
 topoSort graph =
   reverse $ 
   snd $
@@ -75,10 +78,5 @@ topoSort graph =
    roots graph)
   (M.empty,[])
 
-testOk = foldl (\g (x,y) -> addEdge g (show x) (show y)) (M.empty) [(x,y) | x<-[1..100], y<-[x+1..101]]
-
-testPrblm = addEdge testOk "50" "40"
-       
-testDeux = foldl (\g (x,y) -> addEdge g x y) (M.empty) [(x,x++y) | x <- ["1","2","3","4","5","6","7","8","9"] , y <- ["1","2","3","4","5","6","7","8","9"]]      
      
   
