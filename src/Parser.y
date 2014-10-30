@@ -26,7 +26,7 @@ import NetLAST
 %%
 
 
-file : input identlist output identlist var atomlist in eqtns  {NetL {inp = $2, out = $4, var = $6, op = $8}}
+file : input identlist output identlist var atomlist in eqtns  {NetL {inputs = $2, outputs = $4, var = $6, eqtns = $8}}
 
 identlist :          { [] }
           | ident    { [$1] }
@@ -39,13 +39,13 @@ atomlist : {- empty -}          { [] }
 | atom                          { [$1]}
 | atomlist ',' atom      { $3 : $1 }
 
-arg : ident         {Var $1}
-| num           {Const $1}
+arg : ident         {BVar $1}
+| num               {BConst $1}
 
 expr : op arg arg          {BOp $1 $2 $3}
-| select num ident     {Select $2 $3}
-| slice num num ident  {Slice $2 $3 $4}
-| concat ident ident   {Concat $2 $3}
+| select num arg     {Select $2 $3}
+| slice num num arg  {Slice $2 $3 $4}
+| concat arg arg   {Concat $2 $3}
 | arg                  {Id $1}
 
 

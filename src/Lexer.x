@@ -39,7 +39,7 @@ data Tokens =
      INPUT | OUTPUT | VAR 
      | IN    | Ident String
      | REG   | BoolOp Op | Eq 
-     | Colon | Comma | Num Integer
+     | Colon | Comma | Num Int
      | CONCAT | SLICE | SELECT
      | NewLine
      deriving (Show,Eq)

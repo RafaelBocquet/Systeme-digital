@@ -22,4 +22,7 @@ main =
      content <- hGetContents handle
      let net = parse $! (alexScanTokens content)
      hSetBuffering stdout NoBuffering
-     runReaderT (simul (read n) net) =<< (initContent net)
+     let (cycle, init) = netLToFn net
+     let multicycle n = if n==0 then return () else cycle >> (multicycle (n-1)) 
+     runReaderT (multicycle (read n)) =<< init
+     
