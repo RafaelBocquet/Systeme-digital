@@ -1,22 +1,13 @@
 module Scheduler where
 
---import Parser
+import Prelude hiding (foldl,foldr,concat)
+import Data.Foldable
 import NetLAST
 import DepGraph
-import Data.List
 import NetLAST
 
 varUsedIn :: Expr BaseArg -> [Ident]
-varUsedIn (BOp _ a b) = (argToVar a) ++ (argToVar b)
-varUsedIn (Select _ a) = (argToVar a)
-varUsedIn (Concat a b) = (argToVar a) ++ (argToVar b)
-varUsedIn (Slice  _ _ a) = argToVar a
-varUsedIn (Id a) = argToVar a
-varUsedIn Input = []
-varUsedIn (Ram _ a b c d) = concatMap argToVar [a]
-varUsedIn (Rom _ a) = argToVar a
-varUsedIn (Not a) = argToVar a
-
+varUsedIn = foldMap argToVar 
 
 argToVar :: BaseArg -> [Ident]
 argToVar (BVar ident) = [ident]
