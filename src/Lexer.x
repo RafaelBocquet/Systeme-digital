@@ -33,15 +33,18 @@ PiliPili :-
    "CONCAT"                        {const CONCAT}
    "SLICE"                         {const SLICE}
    "SELECT"                        {const SELECT}
+   "RAM"                           {const RAM}
+   "ROM"                           {const ROM}
+   "NOT"                           {const NOT}
 
 {
 data Tokens = 
      INPUT | OUTPUT | VAR 
      | IN    | Ident String
-     | REG   | BoolOp Op | Eq 
+     | REG   | ROM | RAM | BoolOp Op | Eq 
      | Colon | Comma | Num Int
      | CONCAT | SLICE | SELECT
-     | NewLine
+     | NOT
      deriving (Show,Eq)
 
 data Op = XOR | AND | NAND | OR deriving (Show,Eq)
