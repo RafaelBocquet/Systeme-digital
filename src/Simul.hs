@@ -106,8 +106,7 @@ outputFn out =
  * Second an array that will became the 'varNameAndSize' field of the @ReaderContent@
  * Third a map from the variables name to their index
 -}
-indexer ::  NetL BaseArg
-            -> (([Int],[IndexedEqtn],[Int]), Array Int (String,Int), M.Map String Int) 
+indexer ::  NetL -> (([Int],[IndexedEqtn],[Int]), Array Int (String,Int), M.Map String Int) 
 indexer net =
   let (!indNames, !varsIndex) = buildVarIndex (var net) in
   let f arg = case arg of
@@ -163,7 +162,7 @@ addRom (_, Rom (ads,wds) _) m =
 
 -- | Takes a @NetL@ and returns a tuple containing the @Action ()@ representing a cycle and the initial @ReaderContent@
      
-netLToFn :: NetL BaseArg -> (Action (), IO ReaderContent)
+netLToFn :: NetL -> (Action (), IO ReaderContent)
 netLToFn net =
   let ((ins, eqtns, outs),array,index) = indexer $ scheduler (preWorker net) in
   let ramEqtns = filter (\(_,expr) -> case expr of {Ram{} -> True; _ -> False}) eqtns in
@@ -177,7 +176,7 @@ netLToFn net =
 
 
 -- | Home of the dirty hack (cf. README)
-preWorker :: NetL BaseArg -> NetL BaseArg
+preWorker :: NetL -> NetL
 preWorker net =
   let inputEqtns = concatMap (\id -> [(id,Input), ("VARINUTILE", Id (BVar id))]) (inputs net) in
     net{eqtns=(eqtns net) ++inputEqtns, var=(Wire "VARINUTILE"):(var net)}

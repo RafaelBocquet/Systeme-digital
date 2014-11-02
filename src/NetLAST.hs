@@ -3,7 +3,7 @@ module NetLAST where
 import Lexer
 type Ident = String
 
-data NetL a = NetL {inputs :: [Ident], outputs :: [Ident], var :: [Atom], eqtns :: [BaseEqtn]} deriving Show
+data NetL = NetL {inputs :: [Ident], outputs :: [Ident], var :: [Atom], eqtns :: [BaseEqtn]} deriving Show
 
 type BaseEqtn = (Ident,Expr BaseArg)
 type IndexedEqtn = (Int,Expr IndexedArg)

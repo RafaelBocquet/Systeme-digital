@@ -30,14 +30,14 @@ addDepOne (ident,expr) =
   foldl (\f v -> \g -> f (addEdge g ident v)) id $
   varUsedIn expr
   
-generateDepGraph :: NetL BaseArg -> Graph
+generateDepGraph :: NetL  -> Graph
 generateDepGraph net =
   foldl' (flip ($)) (emptyGraph) $
   map addDepOne $
   eqtns net
 
 
-scheduler :: NetL BaseArg -> NetL BaseArg
+scheduler :: NetL -> NetL
 scheduler net =
   let g = generateDepGraph net in
   let l = topoSort g in
