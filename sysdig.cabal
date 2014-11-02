@@ -2,27 +2,20 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 -- The name of the package.
-name:                sysdig
+name:                SystemeDigitalProject
 
--- The package version.  See the Haskell package versioning policy (PVP) 
--- for standards guiding when and how versions should be incremented.
--- http://www.haskell.org/haskellwiki/Package_versioning_policy
--- PVP summary:      +-+------- breaking API changes
---                   | | +----- non-breaking API additions
---                   | | | +--- code changes with no API change
-version:             0.1.0.0
+version:             1.0
 
 -- A short (one-line) description of the package.
--- synopsis:            
+synopsis: Project for J. Vuillemin and T. Bourke course at the ENS.           
 
 -- A longer description of the package.
 -- description:         
 
 -- The license under which the package is released.
--- license:             
+license: MIT            
 
--- The file containing the license text.
-license-file:        LICENSE
+
 
 -- The package author(s).
 author:              Arthur Carcano
@@ -40,18 +33,18 @@ build-type:          Simple
 
 -- Extra files to be distributed with the package, such as examples or a 
 -- README.
--- extra-source-files:  
+extra-source-files:  README.md
 
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
 
-executable sysdig
+executable simulator
   -- .hs or .lhs file containing the Main module.
   main-is:             Main.hs
   
   -- Modules included in this executable, other than Main.
-  other-modules: Parser, Lexer, DepGraph      
+  other-modules: Parser, Lexer, DepGraph, Simul      
   
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:    
