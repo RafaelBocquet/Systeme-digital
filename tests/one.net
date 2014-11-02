@@ -1,9 +1,0 @@
-INPUT a,b
-OUTPUT s, r, t
-VAR
-  a, b, s, t, r, u
-IN
-t = AND s r
-s = AND a b
-r = OR a b
-u = XOR r s
