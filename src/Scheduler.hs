@@ -7,7 +7,8 @@ import DepGraph
 import NetLAST
 
 varUsedIn :: Expr BaseArg -> [Ident]
-varUsedIn = foldMap argToVar 
+varUsedIn (Ram _ ra _ _ _) = argToVar ra
+varUsedIn x = foldMap argToVar x
 
 argToVar :: BaseArg -> [Ident]
 argToVar (BVar ident) = [ident]
