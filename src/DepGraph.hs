@@ -47,15 +47,13 @@ cycleDetection graph =
 
 topoSortWithState :: Graph -> Label -> State ((M.Map Label Mark),[Label]) () 
 topoSortWithState graph l =
-  if (cycleDetection graph) then error "Circular Dependency, aborting."
-  else
-    do (marks,_) <- get
-       if fromMaybe NotVisited (M.lookup l marks) == Visited
-         then return ()
-         else do let children = fromMaybe [] (S.toList <$> (M.lookup l graph))
-                 _ <- sequence $ map (topoSortWithState graph) children
-                 modify $ (M.insert l Visited) *** (l:)
-                 return ()
+  do (marks,_) <- get
+     if fromMaybe NotVisited (M.lookup l marks) == Visited
+       then return ()
+       else do let children = fromMaybe [] (S.toList <$> (M.lookup l graph))
+               _ <- sequence $ map (topoSortWithState graph) children
+               modify $ (M.insert l Visited) *** (l:)
+               return ()
 
 reverseGraph :: Graph -> Graph
 reverseGraph graph =
@@ -72,13 +70,15 @@ roots graph =
 
 topoSort :: Graph -> [Label]
 topoSort graph =
-  reverse $ 
-  snd $
-  execState
-  (sequence $
-   map (topoSortWithState graph) $
-   roots graph)
-  (M.empty,[])
+  if (cycleDetection graph) then error "Circular Dependency, aborting."
+  else
+    reverse $ 
+    snd $
+    execState
+    (sequence $
+     map (topoSortWithState graph) $
+     roots graph)
+    (M.empty,[])
 
      
   
