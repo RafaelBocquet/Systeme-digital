@@ -3,11 +3,20 @@ Simulateur de Netlist
 
 Ce simulateur de Netlist se présente sous la forme d'un
 programme prenant en entrée un fichier .net produit par 
-le compilateur *mjc.byte*. Lorsqu'utilisé avec *cabal* 
+le compilateur *mjc.byte*. Lorsqu'utilisé avec *cabal* :
+
+il se compile ainsi :
+
+    cabal build
+    
 il se lance ainsi :
 
     cabal run -- /chemin/vers/le/fichier.net <nbr de cycles>
-    
+
+il est possible de générer une documentation
+
+    cabal haddock
+
 La ROM de taille d'adressage *addrs* et de taille de 
 mot *wds* est lue depuis un fichier `<addrs>x<wds>.rom`
 contenant $2^addrs$ lignes de wds charactères '0' ou '1' 
