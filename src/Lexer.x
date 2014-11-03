@@ -36,7 +36,7 @@ PiliPili :-
    "RAM"                           {const RAM}
    "ROM"                           {const ROM}
    "NOT"                           {const NOT}
-
+   "MUX"                           {const MUX}
 {
 data Tokens = 
      INPUT | OUTPUT | VAR 
@@ -44,7 +44,7 @@ data Tokens =
      | REG   | ROM | RAM | BoolOp Op | Eq 
      | Colon | Comma | Num Int
      | CONCAT | SLICE | SELECT
-     | NOT
+     | NOT | MUX
      deriving (Show,Eq)
 
 data Op = XOR | AND | NAND | OR deriving (Show,Eq)

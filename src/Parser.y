@@ -23,7 +23,8 @@ import NetLAST
         ram            {RAM}
         rom            {ROM}
         not            {NOT}
-
+        mux            {MUX}
+        
 %name parse
 %tokentype { Tokens }
 
@@ -55,7 +56,7 @@ expr : op arg arg          {BOp $1 $2 $3}
 | ram num num arg arg arg arg {Ram ($2,$3) $4 $5 $6 $7}
 | rom num num arg             {Rom ($2,$3) $4}
 | not arg                     {Not $2}
-
+| mux arg arg arg              {Mux $2 $3 $4}
 eqtns : {- empty -}                { [] }
 | eqtns ident '=' expr          {($2,$4):$1}
 

@@ -31,6 +31,7 @@ data Expr a = BOp Op a a
           | Reg a
           | Input
           | Not a
+          | Mux a a a
           deriving (Show, Functor, Foldable)
 
 

@@ -73,8 +73,10 @@ exprToFn (Slice n m x) = liftM (take m . drop n) (argToVal x)
 exprToFn (BOp op a b) = do aval:_ <- argToVal a
                            bval:_  <- argToVal  b
                            return [opToFn op aval bval]
-                           
-
+exprToFn (Mux i th el) = do i':_ <- argToVal i
+                            th':_ <- argToVal th
+                            el':_ <- argToVal el
+                            return $ [if i' then th' else el']
 
 argToVal :: IndexedArg -> Action [Bool]
 argToVal (IdConst b) = return [b]
