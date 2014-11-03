@@ -44,7 +44,7 @@ executable simulator
   main-is:             Main.hs
   
   -- Modules included in this executable, other than Main.
-  other-modules: Parser, Lexer, DepGraph, Simul      
+  other-modules: Parser, Lexer, DepGraph, Simul, Scheduler, NetLAST     
   
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:    
