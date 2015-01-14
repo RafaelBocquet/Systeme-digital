@@ -19,80 +19,12 @@ import qualified Data.Map.Strict as Map
 
 import qualified GHC.TypeLits
 
--- Nat
-data Nat = Z | S Nat
-data SNat n where
-  SZ :: SNat Z
-  SS :: SNat n -> SNat (S n)
-
-class NatSingleton n where
-  natSingleton :: SNat n
-instance NatSingleton Z where
-  natSingleton = SZ
-instance NatSingleton n => NatSingleton (S n) where
-  natSingleton = SS (natSingleton)
-  
-type family (N n) where
-  N 0       = Z
-  N n = S (N (n GHC.TypeLits.- 1))
-
-type family n + m where
-  n + Z   = n
-  n + S m = S (n + m)
-
-type family n * m where
-  n * Z   = Z
-  n * S m = (n * m) + n
-
-type family P2 n where
-  P2 Z     = S Z
-  P2 (S n) = P2 n + P2 n
-
--- Zippable
-class Zippable f where
-  zip :: f a -> f b -> f (a, b)
+import Magma.Nat
+import Magma.Vec
 
 -- Data types for the circuit
-type Wire = Int
-
-data Vec n a where
-  VNil  :: Vec n a
-  VCons :: a -> Vec n a -> Vec (S n) a
-  
-viewVCons :: Vec (S n) a -> (a, Vec n a)
-viewVCons (VCons a as) = (a, as)
-pattern a :> as <- (viewVCons -> (a, as))
-
--- splitVec :: SNat n -> SNat m -> Vec (m + n) a -> (Vec n a, Vec m a)
--- splitVec SZ     m v            = (VNil, v)
--- splitVec (SS n) m (VCons a as) =
---   let (b, c) = splitVec n m as
---   in (VCons a b, c)
-
-class SplitVec n where
-  splitVec :: Vec (m + n) a -> (Vec n a, Vec m a)
-instance SplitVec Z where
-  splitVec v = (VNil, v)
-instance SplitVec n => SplitVec (S n) where
-  splitVec (VCons a as) =
-    let (b, c) = splitVec as
-    in (VCons a b, c)
-
-pattern a :| b <- (splitVec -> (a, b))
-
-deriving instance Show a => Show (Vec n a)
-instance Functor (Vec n) where
-  fmap f VNil         = VNil
-  fmap f (VCons a as) = f a `VCons` fmap f as
-instance Foldable (Vec n) where
-  foldMap f (VCons a as) = f a <> foldMap f as
-instance Traversable (Vec n) where
-  traverse f VNil         = pure VNil
-  traverse f (VCons a as) = VCons <$> f a <*> traverse f as
-instance Zippable (Vec n) where
-  zip VNil VNil                 = VNil
-  zip (VCons a as) (VCons b bs) = (a, b) `VCons` zip as bs
-
+data Wire = WWire Int
+          | WConst Bool
 
 -- The circuit monad and type
 data Equation = EAnd Wire Wire
@@ -100,14 +32,20 @@ data Equation = EAnd Wire Wire
               | EXor Wire Wire
               | ENand Wire Wire
               | ENot Wire
-              | EConst Bool
               | EMux Wire Wire Wire
-
+                -- Rom and Ram : (2^28) 32-bits blocks
+                -- Reduce address space ?
+                -- Rom : Read Addr
+              | ERom (Vec (N 28) Wire) 
+                -- Ram : Read Addr, Write Addr, Write Value, Write Enable
+              | ERam (Vec (N 28) Wire) (Vec (N 28) Wire) (Vec (N 32) Wire) Wire
+                -- Select is only used internally
+              | ESelect Wire Int
               | EReg Wire
 
 data CircuitState = CircuitState
-                    { circuitFresh     :: Wire
-                    , circuitEquations :: Map Wire Equation
+                    { circuitFresh     :: Int
+                    , circuitEquations :: Map Int Equation
                     }
                     
 newtype CircuitMonad a = CircuitMonad { unCircuitMonad :: State CircuitState a }
@@ -116,20 +54,22 @@ newtype CircuitMonad a = CircuitMonad { unCircuitMonad :: State CircuitState a }
 newtype Circuit a b = Circuit { unCircuit :: Kleisli CircuitMonad a b }
                       deriving (Category, Arrow)
 
-newWire :: CircuitMonad Wire
-newWire = do
+freshWire :: CircuitMonad Wire
+freshWire = do
   i <- circuitFresh <$> get
   modify $ \s -> s { circuitFresh = i + 1 }
-  return i
+  return (WWire i)
 
 addEquation :: Equation -> CircuitMonad Wire
 addEquation e = do
-  w <- newWire
+  WWire w <- freshWire
   modify $ \s -> s { circuitEquations = Map.insert w e (circuitEquations s) }
-  return w
+  return (WWire w)
 
 -- Primitives
 -- We have to use monadic code here
+-- TODO : cases to reduce constants
+-- ex. and2 (True, a) ~ a
 
 and2, or2, xor2, nand2 :: Circuit (Wire, Wire) Wire
 and2  = Circuit . Kleisli $ \(a, b) -> addEquation (EAnd a b)
@@ -143,23 +83,70 @@ not1 = Circuit . Kleisli $ \a -> addEquation (ENot a)
 mux3 :: Circuit (Wire, Wire, Wire) Wire
 mux3 = Circuit . Kleisli $ \(a, b, c) -> addEquation (EMux a b c)
 
-
-const0 :: Circuit Bool Wire
-const0 = Circuit . Kleisli $ \c -> addEquation (EConst c)
+-- These three primitives are more complex, because of the possible cyclic dependencies and of the lack of multiwire equations
 
 reg :: (Wire -> Circuit a (Wire, b)) -> Circuit a b
 reg f = Circuit . Kleisli $ \a -> do
-  w <- newWire
-  (w', b) <- runKleisli (unCircuit $ f w) a
+  WWire w <- freshWire
+  (w', b) <- runKleisli (unCircuit $ f (WWire w)) a
   modify $ \s -> s { circuitEquations = Map.insert w (EReg w') (circuitEquations s) }
   return b
 
+rom :: Circuit (Vec (N 28) Wire) (Vec (N 32) Wire)
+rom = Circuit . Kleisli $ \a -> do
+  WWire w  <- freshWire
+  modify $ \s -> s { circuitEquations = Map.insert w (ERom a) (circuitEquations s) }
+  ws <- traverse
+        (\i -> do
+            WWire w' <- freshWire
+            modify $ \s -> s { circuitEquations = Map.insert w' (ESelect (WWire w) i) (circuitEquations s) }
+            return (WWire w')
+        )
+        toNameVec
+  return ws
 
--- ...
+ram :: (Vec (N 32) Wire -> Circuit a (Vec (N 28) Wire, Vec (N 32) Wire, Wire, b)) -> Circuit (Vec (N 28) Wire, a) b
+ram f = Circuit . Kleisli $ \(ra, a) -> do
+  WWire w  <- freshWire
+  ws <- traverse
+        (\i -> do
+            w' <- freshWire
+            return (i, w')
+        )
+        toNameVec
+  (wa, wd, we, b) <- runKleisli (unCircuit $ f (fmap snd ws)) a
+  modify $ \s -> s { circuitEquations = Map.insert w (ERam ra wa wd we) (circuitEquations s) }
+  traverse
+    (\(i, WWire w') -> do 
+        modify $ \s -> s { circuitEquations = Map.insert w' (ESelect (WWire w) i) (circuitEquations s) }
+    )
+    ws
+  return b
+
+-- -- ...
+
+class RegisterLike r where
+  registerLike :: (r -> Circuit a (r, b)) -> Circuit a b
+instance RegisterLike Wire where
+  registerLike = reg
+instance RegisterLike (Vec Z r) where
+  registerLike f = arr snd . f VNil
+instance (RegisterLike r, RegisterLike (Vec n r)) => RegisterLike (Vec (S n) r) where
+  registerLike f = registerLike
+                   $ \a -> registerLike
+                           $ \as -> proc i -> do
+                             (b :> bs, o) <- f (a `VCons` as) -< i
+                             returnA -< (bs, (b, o))                        
+
 class Muxable a where
   mux :: Circuit (Wire, a, a) a
 instance Muxable Wire where
   mux = mux3
+instance (Muxable a, Muxable b) => Muxable (a, b) where
+  mux = proc (a, (b0, c0), (b1, c1)) -> do
+    b <- mux -< (a, b0, b1)
+    c <- mux -< (a, c0, c1)
+    returnA -< (b, c)
 instance Muxable a => Muxable (Vec Z a) where
   mux = proc _ -> returnA -< VNil
 instance (Muxable a, Muxable (Vec n a)) => Muxable (Vec (S n) a) where
@@ -170,9 +157,10 @@ instance (Muxable a, Muxable (Vec n a)) => Muxable (Vec (S n) a) where
 
 class Select n where
   select :: Muxable a => Circuit (Vec (P2 n) a, Vec n Wire) a
+  -- May have found a GHC bug when pattern matching with (a :> VNil)
 instance Select Z where
-  select = proc (a :> VNil, _) -> returnA -< a
-instance (SplitVec (P2 n), Select n) => Select (S n) where
+  select = proc (a :> _, _) -> returnA -< a
+instance (NatSingleton (P2 n), Select n) => Select (S n) where
   select = proc (b :| c, a :> as) -> do
     b' <- select -< (b, as)
     c' <- select -< (c, as)

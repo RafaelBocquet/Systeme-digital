@@ -14,6 +14,8 @@ import Control.Category
 import qualified GHC.TypeLits
 
 import Magma.Circuit
+import Magma.Vec
+import Magma.Nat
 
 type Registers     = Vec (N 32) (Vec (N 32) Wire)
 type RegisterIndex = Vec (N 5) Wire
@@ -22,10 +24,11 @@ type V32 = Vec (N 32) Wire
 registerFetch :: Circuit (Registers, RegisterIndex) V32
 registerFetch = select
 
--- registerUnit :: ([Nappe 5] -> Circuit a ([Nappe 5], b)) -> Circuit a ([Nappe 5], b)
--- registerUnit = undefined
+registerUnit :: (Registers -> Circuit a (Registers, b)) -> Circuit a b
+registerUnit = registerLike
 
 -- generate all register indexes -> Vec 32 Registers -> mux this
--- may seem to be inefficient, but is not
+-- may actually be inefficient (32 * 32 * 5 muxes)
+-- actually the only way to do it
 updateRegister :: Circuit (Registers, RegisterIndex, V32) Registers
 updateRegister = undefined

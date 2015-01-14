@@ -2,8 +2,6 @@
 
 module Magma.Instruction where
 
-import Magma.Circuit
-import Magma.Register
 
 import Prelude hiding (id, (.), and, or, zip)
 import Data.Traversable
@@ -15,6 +13,42 @@ import Control.Arrow
 import Control.Category
 
 import qualified GHC.TypeLits
+
+import Magma.Circuit
+import Magma.Register
+import Magma.Vec
+import Magma.Nat
+
+data Opcode = OpArith
+            | OpAddi
+            | OpAddiu
+
+            | OpLw
+            | OpSw
+            | OpLui
+              
+            | OpAndi
+            | OpOri
+              
+            | OpBeq
+            | OpBne
+
+            | OpJ
+            | OpJal
+
+            | OpUnknown
+
+opcodeTable :: Vec (N 64) Opcode
+opcodeTable = $(fromList [|
+                          [ OpArith,   OpUnknown, OpJ,       OpJal,     OpBeq,     OpBne,     OpUnknown, OpUnknown -- 00
+                          , OpAddi,    OpAddiu,   OpUnknown, OpUnknown, OpAndi,    OpOri,     OpUnknown, OpLui     -- 08
+                          , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 10
+                          , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 18
+                          , OpUnknown, OpUnknown, OpUnknown, OpLw,      OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 20
+                          , OpUnknown, OpUnknown, OpUnknown, OpSw,      OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 28
+                          , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 30
+                          , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 38
+                          ] |])
 
 data Instruction = Instruction
                    { instructionOpcode    :: Vec (N 6) Wire
