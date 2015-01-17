@@ -2,7 +2,7 @@
 
 module Magma.Circuit where
 
-import Prelude hiding (id, (.), and, or, zip)
+import Prelude hiding (id, (.), and, or, zip, foldr1, concat)
 import Data.Traversable
 import Data.Foldable hiding (and, or)
 import Data.Functor
@@ -47,12 +47,48 @@ data CircuitState = CircuitState
                     { circuitFresh     :: Int
                     , circuitEquations :: Map Int Equation
                     }
+
+emptyCircuitState :: CircuitState
+emptyCircuitState = CircuitState 0 Map.empty
                     
 newtype CircuitMonad a = CircuitMonad { unCircuitMonad :: State CircuitState a }
                          deriving (Functor, Applicative, Monad, MonadState CircuitState)
 
 newtype Circuit a b = Circuit { unCircuit :: Kleisli CircuitMonad a b }
                       deriving (Category, Arrow)
+
+-- TODO : circuit input / output
+runCircuit :: Circuit () () -> String
+runCircuit (Circuit c) =
+  let eqs = circuitEquations . flip execState emptyCircuitState . unCircuitMonad $ runKleisli c ()
+      inputs     = [] :: [Int]
+      outputs    = [] :: [Int]
+      vars       = Map.keys eqs
+      varname x  = "V" ++ show x
+      commasep   = foldr1 (\a b -> a ++ ", " ++ b)
+      printWire (WWire a) = varname a
+      printEquation (EAnd a b)     = "AND " ++ printWire a ++ " " ++ printWire b
+      printEquation (EOr a b)      = "OR " ++ printWire a ++ " " ++ printWire b
+      printEquation (EXor a b)     = "XOR " ++ printWire a ++ " " ++ printWire b
+      printEquation (ENand a b)    = "NAND " ++ printWire a ++ " " ++ printWire b
+      printEquation (ENot a)       = "NOT " ++ printWire a
+      printEquation (EMux a b c)   = "MUX " ++ printWire a ++ " " ++ printWire b ++ " " ++ printWire c
+      -- need to concat 28 wires
+--      printEquation (ERom a)       = "ROM " ++ printWire a
+--      printEquation (ERam a b c d) = "RAM " ++ printWire a ++ " " ++ printWire b ++ " " ++ printWire c ++ " " ++ printWire d
+      printEquation (ESelect a b)  = "SELECT " ++ show b ++ " " ++ printWire a
+      printEquation (EReg a)       = "REG " ++ printWire a
+  in concat
+     [ "INPUT"
+     , commasep (varname <$> inputs)
+     , "\nOUTPUT"
+     , commasep (varname <$> outputs)
+     , "\nVAR"
+     , commasep (varname <$> vars)
+     , "\nIN\n"
+     , concat (fmap (\(w, e) -> varname w ++ " = " ++ printEquation e ++ "\n") (Map.toList eqs)) 
+     ]
+     
 
 freshWire :: CircuitMonad Wire
 freshWire = do
@@ -165,3 +201,18 @@ instance (NatSingleton (P2 n), Select n) => Select (S n) where
     b' <- select -< (b, as)
     c' <- select -< (c, as)
     mux -< (a, b', c')
+
+class Default a where
+  defaultValue :: a
+instance Default Wire where
+  defaultValue = WConst False
+instance Default (Vec Z a) where
+  defaultValue = VNil
+instance (Default a, Default (Vec n a)) => Default (Vec (S n) a) where
+  defaultValue = VCons defaultValue defaultValue
+
+{- needs to be implemented from BDD -}
+{- Maybe -> Nothing = dont care ? -}
+{- Only DontCares -> defaultValue -}
+fromTable :: (Muxable a, Select n, Default a) => Vec (P2 n) (Maybe a) -> Circuit (Vec n Wire) a
+fromTable a = proc b -> select -< (fmap (maybe defaultValue id) a, b)
