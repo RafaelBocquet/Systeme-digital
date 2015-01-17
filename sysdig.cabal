@@ -50,7 +50,7 @@ executable simulator
   -- other-extensions:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base, array, mtl, containers, transformers, template-haskell
+  build-depends:       base, array, mtl, containers, transformers, template-haskell, th-lift
   
   -- Directories containing source files.
   hs-source-dirs:      src

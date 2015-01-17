@@ -8,10 +8,10 @@ import Data.Foldable hiding (and, or)
 import Data.Functor
 import Data.Monoid
 import Control.Applicative
-import Control.Arrow
+import Control.Monad
 import Control.Category
-import Data.Functor.Identity
-import Control.Monad.State
+import Control.Monad.Identity
+import Control.Monad.State hiding (lift)
 
 import qualified GHC.TypeLits
 
@@ -28,6 +28,8 @@ class Zippable f where
 data Vec n a where
   VNil  :: Vec Z a
   VCons :: a -> Vec n a -> Vec (S n) a
+
+infixr 9 `VCons`
 
 viewVCons :: Vec (S n) a -> (a, Vec n a)
 viewVCons (VCons a as) = (a, as)

@@ -3,7 +3,7 @@
 module Magma.Instruction where
 
 
-import Prelude hiding (id, (.), and, or, zip)
+import Prelude hiding (id, (.), and, or, zip, elem)
 import Data.Traversable
 import Data.Foldable hiding (and, or)
 import Data.Functor
@@ -37,6 +37,7 @@ data Opcode = OpArith
             | OpJal
 
             | OpUnknown
+            deriving (Eq, Ord)
 
 opcodeTable :: Vec (N 64) Opcode
 opcodeTable = $(fromList [|
@@ -72,14 +73,14 @@ data Funct = FnAdd
            | FnSrlv
            | FnSrav
            | FnJr
+           | FnSyscall
            | FnUnknown
-
--- done up to mflo
+           deriving(Eq, Ord)
 
 functTable :: Vec (N 64) Funct
 functTable = $(fromList [|
                          [ FnSll,     FnUnknown, FnSlr,     FnSra,     FnSllv,    FnSrlv,    FnSrav,    FnUnknown -- 00
-                         , FnJr,      FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 08
+                         , FnJr,      FnUnknown, FnUnknown, FnUnknown, FnSyscall, FnUnknown, FnUnknown, FnUnknown -- 08
                          , FnMfhi,    FnUnknown, FnMflo,    FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 10
                          , FnMul,     FnMulu,    FnDiv,     FnDivu,    FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 18
                          , FnAdd,     FnAddu,    FnSub,     FnSubu,    FnAnd,     FnOr,      FnXor,     FnNor     -- 20
@@ -89,22 +90,42 @@ functTable = $(fromList [|
                          ] |])
 
 opcodeRegisterWriteEnable :: Wire -> Opcode -> Maybe Wire
-opcodeRegisterWriteEnable f OpArith   = Just f
-opcodeRegisterWriteEnable f OpJ       = Just (WConst False)
-opcodeRegisterWriteEnable f OpJal     = Just (WConst False)
-opcodeRegisterWriteEnable f OpBeq     = Just (WConst False)
-opcodeRegisterWriteEnable f OpBne     = Just (WConst False)
-opcodeRegisterWriteEnable f OpAddi    = Just (WConst True)
-opcodeRegisterWriteEnable f OpAddiu   = Just (WConst True)
-opcodeRegisterWriteEnable f OpAndi    = Just (WConst True)
-opcodeRegisterWriteEnable f OpOri     = Just (WConst True)
-opcodeRegisterWriteEnable f OpLui     = Just (WConst True)
-opcodeRegisterWriteEnable f OpLw      = Just (WConst True)
-opcodeRegisterWriteEnable f OpSw      = Just (WConst False)
-opcodeRegisterWriteEnable f OpUnknown = Nothing
+opcodeRegisterWriteEnable f OpArith       = Just f
+opcodeRegisterWriteEnable f OpUnknown     = Nothing
+opcodeRegisterWriteEnable f op
+  | op `elem` [OpJ, OpBeq, OpBne, OpSw]   = Just (WConst False)
+  | op `elem` [OpAddi, OpAddiu, OpAndi,
+               OpOri, OpLui, OpLw, OpJal] = Just (WConst True)
 
 functRegisterWriteEnable :: Funct -> Maybe Wire
-functRegisterWriteEnable = undefined
+functRegisterWriteEnable FnUnknown                              = Nothing
+functRegisterWriteEnable fn
+  | fn `elem` [FnMul, FnMulu, FnDiv, FnDivu, FnJr]              = Just (WConst False)
+  | fn `elem` [FnAdd, FnAddu, FnSub, FnSubu, FnMfhi, FnMflo,
+               FnAnd, FnOr, FnXor, FnNor, FnSlt, FnSll,
+               FnSlr, FnSra, FnSllv, FnSrlv, FnSrav, FnSyscall] = Just (WConst False)
+
+opcodeDestinationRegister :: RegisterIndex -> RegisterIndex -> Opcode -> Maybe RegisterIndex
+opcodeDestinationRegister f rd OpArith                        = Just f
+opcodeDestinationRegister f rd OpUnknown                      = Nothing
+opcodeDestinationRegister f rd op
+  | op `elem` [OpJ, OpJal, OpBeq, OpBne, OpSw]                = Nothing
+  | op `elem` [OpAddi, OpAddiu, OpAndi, OpOri, OpLui, OpLw]   = Just rd
+  | op `elem` [OpJal]                                         = Just $(registerIndex 31)
+
+functDestinationRegister :: RegisterIndex -> Funct -> Maybe RegisterIndex
+functDestinationRegister rd FnUnknown                = Nothing
+functDestinationRegister rd FnSyscall                = Just $(registerIndex 2) -- $v0
+functDestinationRegister rd fn
+  | fn `elem` [FnMul, FnMulu, FnDiv, FnDivu, FnJr]   = Nothing
+  | fn `elem` [FnAdd, FnAddu, FnSub, FnSubu, FnMfhi, FnMflo,
+               FnAnd, FnOr, FnXor, FnNor, FnSlt, FnSll,
+               FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = Just rd
+
+opcodeMemoryWriteEnable :: Opcode -> Maybe Wire
+opcodeMemoryWriteEnable OpSw      = Just (WConst True)
+opcodeMemoryWriteEnable OpUnknown = Nothing
+opcodeMemoryWriteEnable _         = Just (WConst False)
 
 data Instruction = Instruction
                    { instructionOpcode    :: Vec (N 6) Wire
@@ -128,3 +149,7 @@ instructionRegisterWriteEnable = proc i -> do
   fWe <- fromTable (functRegisterWriteEnable <$> functTable) -< (instructionFunct i)
   fromTable (opcodeRegisterWriteEnable fWe <$> opcodeTable) -<< (instructionOpcode i)
   
+instructionDestinationRegister :: Circuit Instruction RegisterIndex
+instructionDestinationRegister = proc i -> do
+  fRe <- fromTable (functDestinationRegister (instructionRd i) <$> functTable) -<< (instructionFunct i)
+  fromTable (opcodeDestinationRegister fRe (instructionRd i) <$> opcodeTable) -<< (instructionOpcode i)
