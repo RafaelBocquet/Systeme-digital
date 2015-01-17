@@ -126,5 +126,5 @@ readInstruction = proc (o :| i) -> do
 instructionRegisterWriteEnable :: Circuit Instruction Wire
 instructionRegisterWriteEnable = proc i -> do
   fWe <- fromTable (functRegisterWriteEnable <$> functTable) -< (instructionFunct i)
-  fromTable (opcodeRegisterWriteEnable fWe <$> opcodeTable) -< (instructionOpcode i)
+  fromTable (opcodeRegisterWriteEnable fWe <$> opcodeTable) -<< (instructionOpcode i)
   

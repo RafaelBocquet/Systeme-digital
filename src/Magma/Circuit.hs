@@ -55,7 +55,7 @@ newtype CircuitMonad a = CircuitMonad { unCircuitMonad :: State CircuitState a }
                          deriving (Functor, Applicative, Monad, MonadState CircuitState)
 
 newtype Circuit a b = Circuit { unCircuit :: Kleisli CircuitMonad a b }
-                      deriving (Category, Arrow)
+                      deriving (Category, Arrow, ArrowApply)
 
 -- TODO : circuit input / output
 runCircuit :: Circuit () () -> String
