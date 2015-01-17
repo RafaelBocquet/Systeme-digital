@@ -2,10 +2,6 @@ import Lexer
 import Parser
 import Scheduler
 import Simul
-import Magma.Circuit
-import Magma.Arithmetic
-import Magma.CPU
-import Magma.Instruction
 import Control.Monad.Trans.Reader
 import System.Environment
 import System.IO

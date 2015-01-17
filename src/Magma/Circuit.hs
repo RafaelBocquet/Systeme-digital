@@ -65,7 +65,8 @@ runCircuit (Circuit c) =
       outputs    = [] :: [Int]
       vars       = Map.keys eqs
       varname x  = "V" ++ show x
-      commasep   = foldr1 (\a b -> a ++ ", " ++ b)
+      commasep [] = ""
+      commasep xs = foldr1 (\a b -> a ++ ", " ++ b) xs
       printWire (WWire a) = varname a
       printEquation (EAnd a b)     = "AND " ++ printWire a ++ " " ++ printWire b
       printEquation (EOr a b)      = "OR " ++ printWire a ++ " " ++ printWire b
@@ -79,11 +80,11 @@ runCircuit (Circuit c) =
       printEquation (ESelect a b)  = "SELECT " ++ show b ++ " " ++ printWire a
       printEquation (EReg a)       = "REG " ++ printWire a
   in concat
-     [ "INPUT"
+     [ "INPUT "
      , commasep (varname <$> inputs)
-     , "\nOUTPUT"
+     , "\nOUTPUT "
      , commasep (varname <$> outputs)
-     , "\nVAR"
+     , "\nVAR "
      , commasep (varname <$> vars)
      , "\nIN\n"
      , concat (fmap (\(w, e) -> varname w ++ " = " ++ printEquation e ++ "\n") (Map.toList eqs)) 

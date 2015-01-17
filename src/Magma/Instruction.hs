@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, MultiParamTypeClasses, FlexibleInstances, GeneralizedNewtypeDeriving, Arrows, GADTs, DataKinds, PolyKinds, TypeOperators, StandaloneDeriving, TypeFamilies, ViewPatterns, PatternSynonyms #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, MultiParamTypeClasses, FlexibleInstances, GeneralizedNewtypeDeriving, Arrows, GADTs, DataKinds, TypeOperators, TypeFamilies, ViewPatterns, PatternSynonyms #-}
 
 module Magma.Instruction where
 
@@ -146,10 +146,14 @@ readInstruction = proc (o :| i) -> do
 
 instructionRegisterWriteEnable :: Circuit Instruction Wire
 instructionRegisterWriteEnable = proc i -> do
-  fWe <- fromTable (functRegisterWriteEnable <$> functTable) -< (instructionFunct i)
-  fromTable (opcodeRegisterWriteEnable fWe <$> opcodeTable) -<< (instructionOpcode i)
+  fWe <- fromTable (functRegisterWriteEnable <$> functTable) -< instructionFunct i
+  fromTable (opcodeRegisterWriteEnable fWe <$> opcodeTable) -<< instructionOpcode i
   
 instructionDestinationRegister :: Circuit Instruction RegisterIndex
 instructionDestinationRegister = proc i -> do
-  fRe <- fromTable (functDestinationRegister (instructionRd i) <$> functTable) -<< (instructionFunct i)
-  fromTable (opcodeDestinationRegister fRe (instructionRd i) <$> opcodeTable) -<< (instructionOpcode i)
+  fRe <- fromTable (functDestinationRegister (instructionRd i) <$> functTable) -<< instructionFunct i
+  fromTable (opcodeDestinationRegister fRe (instructionRd i) <$> opcodeTable) -<< instructionOpcode i
+
+instructionMemoryWriteEnable :: Circuit Instruction Wire
+instructionMemoryWriteEnable = proc i -> do
+  fromTable (opcodeMemoryWriteEnable <$> opcodeTable) -< instructionOpcode i
