@@ -2,6 +2,8 @@
 
 module Magma.Nat where
 
+import Data.Type.Equality
+
 import qualified GHC.TypeLits
 
 -- |Kind of type level naturals
@@ -47,6 +49,20 @@ type family (N n) where
 type family n + m where
   n + Z   = n
   n + S m = S (n + m)
+
+leftS :: SNat n -> SNat m -> S n + m :~: S (n + m)
+leftS n SZ = Refl
+leftS n (SS m) = case leftS n m of
+  Refl -> Refl
+
+-- | Proof that the additition is commutative
+plusComm :: SNat n -> SNat m -> (n + m) :~: (m + n)
+plusComm SZ SZ     = Refl
+plusComm SZ (SS m) = case plusComm SZ m of
+  Refl -> Refl
+plusComm (SS n) m  = case plusComm n m of
+  Refl -> case leftS n m of
+           Refl -> Refl
 
 -- |Type level multiplication
 type family n * m where

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, MultiParamTypeClasses, FlexibleInstances, GeneralizedNewtypeDeriving, Arrows, GADTs, DataKinds, PolyKinds, TypeOperators, StandaloneDeriving, TypeFamilies, UndecidableInstances, ViewPatterns, PatternSynonyms, RankNTypes, FlexibleContexts #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, MultiParamTypeClasses, FlexibleInstances, GeneralizedNewtypeDeriving, Arrows, GADTs, DataKinds, PolyKinds, TypeOperators, StandaloneDeriving, TypeFamilies, UndecidableInstances, ViewPatterns, PatternSynonyms, RankNTypes, FlexibleContexts, ScopedTypeVariables #-}
 
 module Magma.Arithmetic where
 
@@ -69,3 +69,17 @@ parallelSubs :: ParallelAdder n => Circuit (Vec n Wire, Vec n Wire) (Vec n Wire,
 parallelSubs = proc (a,b) -> do
   b' <- bitwise not1 -< b
   parallelAdder' -< (WConst True,a,b')
+
+-- needs testing
+class ParallelMult n m where
+  parallelMult :: Circuit (Vec (S n) Wire, Vec m Wire) (Vec (m + n) Wire)
+instance ParallelMult Z m where
+  parallelMult = proc (a :> _, b) -> do
+    bitwise (proc x -> and2 -< (a, x)) -<< b
+instance (NatSingleton n, NatSingleton m, GenerateVec n, ParallelAdder (m + n), ParallelMult n m) => ParallelMult (S n) m where
+  parallelMult = proc (a :> as, b) -> do
+    b'  <- bitwise (proc c -> and2 -< (a, c)) -<< b
+    let alignB = b' `vappendComm` (replicateVec (WConst False) :: Vec n Wire)
+    c <- parallelMult -< (as, b)
+    arr fst . parallelAdder -< (WConst False `VCons` alignB, WConst False `VCons` c)
+  

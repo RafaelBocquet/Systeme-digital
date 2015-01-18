@@ -7,6 +7,7 @@ import Data.Traversable
 import Data.Foldable hiding (and, or)
 import Data.Functor
 import Data.Monoid
+import Data.Type.Equality
 import Control.Applicative
 import Control.Monad
 import Control.Category
@@ -45,9 +46,9 @@ instance GenerateVec Z where
 instance GenerateVec n => GenerateVec (S n) where
   generateVec f = VCons <$> f <*> generateVec f
 
--- | 'emptyVec' is the vector of length n with only () as elements
-emptyVec :: GenerateVec n => Vec n ()
-emptyVec = runIdentity (generateVec (Identity ()))
+-- | 'replicateVec' a is the vector of length n with only a as elements
+replicateVec :: GenerateVec n => a -> Vec n a
+replicateVec a = runIdentity (generateVec (Identity a))
 
 -- | 'indicesVec' is the vector of length n whose i-th element is i
 indicesVec :: GenerateVec n => Vec n Int
@@ -77,6 +78,11 @@ vappend = withNatSingleton vappend'
 vappend' :: SNat n -> Vec n a -> Vec m a -> Vec (m + n) a
 vappend' SZ     VNil         v = v
 vappend' (SS n) (VCons a as) v = a `VCons` vappend' n as v
+
+-- |Vector concatenation (using commutativity of plus)
+vappendComm :: forall a n m. (NatSingleton n, NatSingleton m) => Vec n a -> Vec m a -> Vec (n + m) a
+vappendComm a b = case plusComm (natSingleton :: SNat n) (natSingleton :: SNat m) of
+  Refl -> vappend a b
 
 deriving instance Show a => Show (Vec n a)
 instance Functor (Vec n) where
