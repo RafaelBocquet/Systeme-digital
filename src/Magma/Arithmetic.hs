@@ -70,6 +70,11 @@ parallelSubs = proc (a,b) -> do
   b' <- bitwise not1 -< b
   parallelAdder' -< (WConst True,a,b')
 
+parallelAddSub :: (GenerateVec n, ParallelAdder n) => Circuit (Wire,Vec n Wire,Vec n Wire) (Vec n Wire, Wire)
+parallelAddSub = proc (control,a,b) -> do
+  b' <- bitwise xor2 -< zip (replicateVec control) b
+  parallelAdder' -< (control,a,b')
+
 -- needs testing
 class ParallelMult n m where
   parallelMult :: Circuit (Vec (S n) Wire, Vec m Wire) (Vec (m + n) Wire)
@@ -82,4 +87,3 @@ instance (NatSingleton n, NatSingleton m, GenerateVec n, ParallelAdder (m + n), 
     let alignB = b' `vappendComm` (replicateVec (WConst False) :: Vec n Wire)
     c <- parallelMult -< (as, b)
     arr fst . parallelAdder -< (WConst False `VCons` alignB, WConst False `VCons` c)
-  
