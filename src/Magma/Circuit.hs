@@ -22,25 +22,19 @@ import qualified GHC.TypeLits
 import Magma.Nat
 import Magma.Vec
 
--- Data types for the circuit
 data Wire = WWire Int
           | WConst Bool
+          deriving (Eq, Ord)
 
--- The circuit monad and type
 data Equation = EAnd Wire Wire
               | EOr Wire Wire
               | EXor Wire Wire
               | ENand Wire Wire
               | ENot Wire
               | EMux Wire Wire Wire
-                -- Rom and Ram : (2^28) 32-bits blocks
-                -- Reduce address space ?
-                -- Rom : Read Addr
-              | ERom (Vec (N 28) Wire) 
-                -- Ram : Read Addr, Write Addr, Write Value, Write Enable
-              | ERam (Vec (N 28) Wire) (Vec (N 28) Wire) (Vec (N 32) Wire) Wire
-                -- Select is only used internally
-              | ESelect Wire Int
+              | ERom (Vec (N 28) Wire) -- ^ Read address
+              | ERam (Vec (N 28) Wire) (Vec (N 28) Wire) (Vec (N 32) Wire) Wire -- ^ Read address | Write address | Write enable
+              | ESelect Wire Int -- ^ Only used internally
               | EReg Wire
 
 data CircuitState = CircuitState
@@ -50,7 +44,7 @@ data CircuitState = CircuitState
 
 emptyCircuitState :: CircuitState
 emptyCircuitState = CircuitState 0 Map.empty
-                    
+
 newtype CircuitMonad a = CircuitMonad { unCircuitMonad :: State CircuitState a }
                          deriving (Functor, Applicative, Monad, MonadState CircuitState)
 
@@ -107,39 +101,43 @@ addEquation e = do
 -- We have to use monadic code here
 
 and2, or2, xor2, nand2 :: Circuit (Wire, Wire) Wire
-and2  = Circuit . Kleisli $ \case
-  (WConst True,a) -> return a
-  (a,WConst True) -> return a
-  (_,WConst False) -> return $ WConst False
-  (WConst False,_) -> return $ WConst False 
-  (a, b) -> addEquation (EAnd a b)
-or2   = Circuit . Kleisli $ \case
-  (WConst False,a) -> return a
-  (a,WConst False) -> return a
-  (WConst True, _) -> return $ WConst True
-  (_, WConst True) -> return $ WConst True
-  (a, b) -> addEquation (EOr a b)
-xor2  = Circuit . Kleisli $ \case
-  (WConst False,a) -> return a
-  (a,WConst False) -> return a
+and2 = Circuit . Kleisli $ \case
+  (WConst True,a)    -> return a
+  (a,WConst True)    -> return a
+  (_,WConst False)   -> return $ WConst False
+  (WConst False,_)   -> return $ WConst False 
+  (a, b) | a == b    -> return a
+         | otherwise -> addEquation (EAnd a b)
+or2 = Circuit . Kleisli $ \case
+  (WConst False,a)   -> return a
+  (a,WConst False)   -> return a
+  (WConst True, _)   -> return $ WConst True
+  (_, WConst True)   -> return $ WConst True
+  (a, b) | a == b    -> return a
+         | otherwise -> addEquation (EOr a b)
+xor2 = Circuit . Kleisli $ \case
+  (WConst False,a)          -> return a
+  (a,WConst False)          -> return a
   (WConst True,WConst True) -> return $ WConst False
-  (a, b) -> addEquation (EXor a b)
+  (a, b) | a == b           -> return $ WConst False
+         | otherwise        -> addEquation (EXor a b)
 nand2 = Circuit . Kleisli $ \case 
   (WConst True,WConst True) -> return $ WConst False
-  (WConst False, _) -> return $ WConst True
-  (_,WConst False) -> return $ WConst True
-  (a, b) -> addEquation (ENand a b)
+  (WConst False, _)         -> return $ WConst True
+  (_,WConst False)          -> return $ WConst True
+  (a, b)                    -> addEquation (ENand a b)
 
 not1 :: Circuit Wire Wire
 not1 = Circuit . Kleisli $ \case
   (WConst b) -> return $ WConst (not b)
-  a -> addEquation (ENot a)
+  a          -> addEquation (ENot a)
 
 mux3 :: Circuit (Wire, Wire, Wire) Wire
 mux3 = Circuit . Kleisli $ \case
-  (WConst True,b,_) -> return b
-  (WConst False,_,c) -> return c
-  (a, b, c) -> addEquation (EMux a b c)
+  (WConst True, b, _)   -> return b
+  (WConst False, _, c)  -> return c  
+  (a, b, c) | b == c    -> return b
+            | otherwise -> addEquation (EMux a b c)
 
 -- These three primitives are more complex, because of the possible cyclic dependencies and of the lack of multiwire equations
 
@@ -160,7 +158,7 @@ rom = Circuit . Kleisli $ \a -> do
             modify $ \s -> s { circuitEquations = Map.insert w' (ESelect (WWire w) i) (circuitEquations s) }
             return (WWire w')
         )
-        toNameVec
+        indicesVec
   return ws
 
 ram :: (Vec (N 32) Wire -> Circuit a (Vec (N 28) Wire, Vec (N 32) Wire, Wire, b)) -> Circuit (Vec (N 28) Wire, a) b
@@ -171,7 +169,7 @@ ram f = Circuit . Kleisli $ \(ra, a) -> do
             w' <- freshWire
             return (i, w')
         )
-        toNameVec
+        indicesVec
   (wa, wd, we, b) <- runKleisli (unCircuit $ f (fmap snd ws)) a
   modify $ \s -> s { circuitEquations = Map.insert w (ERam ra wa wd we) (circuitEquations s) }
   traverse
@@ -197,6 +195,7 @@ instance (RegisterLike r, RegisterLike (Vec n r)) => RegisterLike (Vec (S n) r) 
                              returnA -< (bs, (b, o))                        
 
 class Muxable a where
+  -- | 'mux' is circuit whose output is either its second or third input, depending on its first input.
   mux :: Circuit (Wire, a, a) a
 instance Muxable Wire where
   mux = mux3
@@ -214,6 +213,7 @@ instance (Muxable a, Muxable (Vec n a)) => Muxable (Vec (S n) a) where
     returnA -< d `VCons` ds
 
 class Select n where
+  -- | 'select' is a circuit that performs a lookup in a lookup table of size (2 ^ n) using a n bits index.
   select :: Muxable a => Circuit (Vec (P2 n) a, Vec n Wire) a
   -- May have found a GHC bug when pattern matching with (a :> VNil)
 instance Select Z where

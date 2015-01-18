@@ -21,12 +21,14 @@ import Magma.Circuit
 import Magma.Vec
 import Magma.Nat
 
-type Registers     = Vec (N 32) (Vec (N 32) Wire)
+type Registers     = Vec (N 32) V32
 type RegisterIndex = Vec (N 5) Wire
-type V32 = Vec (N 32) Wire
+type V32           = Vec (N 32) Wire
 
 deriveLift ''Wire
 
+-- | Template Haskell to get a 'RegisterIndex' from an Int literal
+-- > $(registerIndex 30) == True `VCons` True `VCons` True `VCons` True `VCons` False
 registerIndex :: Int -> ExpQ
 registerIndex i
   | i < 0 || i > 31 = fail "Register index should be positive and less than 31"
@@ -36,14 +38,12 @@ registerIndex i
           toBinary  n = reverse (take 5 (toBinary' n))
       fromList (lift (WConst <$> toBinary i))
 
-registerFetch :: Circuit (Registers, RegisterIndex) V32
-registerFetch = select
+-- registerFetch :: Circuit (Registers, RegisterIndex) V32
+-- registerFetch = select
 
-registerUnit :: (Registers -> Circuit a (Registers, b)) -> Circuit a b
-registerUnit = registerLike
+-- registerUnit :: (Registers -> Circuit a (Registers, b)) -> Circuit a b
+-- registerUnit = registerLike
 
--- generate all register indexes -> Vec 32 Registers -> mux this
--- may actually be inefficient (32 * 32 * 5 muxes)
--- actually the only way to do it
-updateRegister :: Circuit (Registers, RegisterIndex, V32) Registers
+-- | updateRegister -< (we, regs, ri, v) updates the register with index ri in regs with value v when we is 1
+updateRegister :: Circuit (Wire, Registers, RegisterIndex, V32) Registers
 updateRegister = undefined

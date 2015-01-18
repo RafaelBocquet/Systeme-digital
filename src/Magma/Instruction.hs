@@ -19,6 +19,8 @@ import Magma.Register
 import Magma.Vec
 import Magma.Nat
 
+
+-- |Opcodes of MIPS instruction we handle
 data Opcode = OpArith
             | OpAddi
             | OpAddiu
@@ -39,6 +41,7 @@ data Opcode = OpArith
             | OpUnknown
             deriving (Eq, Ord)
 
+-- |Used to generate lookup tables from the opcode to data needed by the circuit
 opcodeTable :: Vec (N 64) Opcode
 opcodeTable = $(fromList [|
                           [ OpArith,   OpUnknown, OpJ,       OpJal,     OpBeq,     OpBne,     OpUnknown, OpUnknown -- 00
@@ -51,6 +54,7 @@ opcodeTable = $(fromList [|
                           , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 38
                           ] |])
 
+-- |Funct codes of MIPS function instructions we handle
 data Funct = FnAdd
            | FnAddu
            | FnSub
@@ -77,6 +81,7 @@ data Funct = FnAdd
            | FnUnknown
            deriving(Eq, Ord)
 
+-- |Used to generate lookup tables for function instructions
 functTable :: Vec (N 64) Funct
 functTable = $(fromList [|
                          [ FnSll,     FnUnknown, FnSlr,     FnSra,     FnSllv,    FnSrlv,    FnSrav,    FnUnknown -- 00
@@ -89,6 +94,7 @@ functTable = $(fromList [|
                          , FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 38
                          ] |])
 
+-- |Which opcodes need to write to a register
 opcodeRegisterWriteEnable :: Wire -> Opcode -> Maybe Wire
 opcodeRegisterWriteEnable f OpArith       = Just f
 opcodeRegisterWriteEnable f OpUnknown     = Nothing
@@ -97,6 +103,7 @@ opcodeRegisterWriteEnable f op
   | op `elem` [OpAddi, OpAddiu, OpAndi,
                OpOri, OpLui, OpLw, OpJal] = Just (WConst True)
 
+-- |Which function instructions need to write to a register
 functRegisterWriteEnable :: Funct -> Maybe Wire
 functRegisterWriteEnable FnUnknown                              = Nothing
 functRegisterWriteEnable fn
@@ -105,28 +112,32 @@ functRegisterWriteEnable fn
                FnAnd, FnOr, FnXor, FnNor, FnSlt, FnSll,
                FnSlr, FnSra, FnSllv, FnSrlv, FnSrav, FnSyscall] = Just (WConst False)
 
+-- |What is the destination register of an opcode
 opcodeDestinationRegister :: RegisterIndex -> RegisterIndex -> Opcode -> Maybe RegisterIndex
 opcodeDestinationRegister f rd OpArith                        = Just f
 opcodeDestinationRegister f rd OpUnknown                      = Nothing
 opcodeDestinationRegister f rd op
   | op `elem` [OpJ, OpJal, OpBeq, OpBne, OpSw]                = Nothing
   | op `elem` [OpAddi, OpAddiu, OpAndi, OpOri, OpLui, OpLw]   = Just rd
-  | op `elem` [OpJal]                                         = Just $(registerIndex 31)
+  | op `elem` [OpJal]                                         = Just $(registerIndex 31) -- ra
 
+-- |What is the destination register of a function instruction
 functDestinationRegister :: RegisterIndex -> Funct -> Maybe RegisterIndex
 functDestinationRegister rd FnUnknown                = Nothing
-functDestinationRegister rd FnSyscall                = Just $(registerIndex 2) -- $v0
+functDestinationRegister rd FnSyscall                = Just $(registerIndex 2) -- v0
 functDestinationRegister rd fn
   | fn `elem` [FnMul, FnMulu, FnDiv, FnDivu, FnJr]   = Nothing
   | fn `elem` [FnAdd, FnAddu, FnSub, FnSubu, FnMfhi, FnMflo,
                FnAnd, FnOr, FnXor, FnNor, FnSlt, FnSll,
                FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = Just rd
 
+-- |Which opcodes need to write to memory
 opcodeMemoryWriteEnable :: Opcode -> Maybe Wire
 opcodeMemoryWriteEnable OpSw      = Just (WConst True)
 opcodeMemoryWriteEnable OpUnknown = Nothing
 opcodeMemoryWriteEnable _         = Just (WConst False)
 
+-- |'Instruction' contains the different parts of a MIPS instruction
 data Instruction = Instruction
                    { instructionOpcode    :: Vec (N 6) Wire
                    , instructionRs        :: RegisterIndex
@@ -138,17 +149,20 @@ data Instruction = Instruction
                    , instructionAddress   :: Vec (N 26) Wire
                    }
 
+-- |'readInstruction' extracts the useful components of a 32 bits MIPS instruction
 readInstruction :: Circuit V32 Instruction
 readInstruction = proc (o :| i) -> do
   let rs :| rt :| i'       = i
   let rd :| shamt :| funct = i'
   returnA -< Instruction o rs rt rd shamt funct i' i
 
+-- TODO : Move these circuits to a single one to improve OBDD syn ?
+
 instructionRegisterWriteEnable :: Circuit Instruction Wire
 instructionRegisterWriteEnable = proc i -> do
   fWe <- fromTable (functRegisterWriteEnable <$> functTable) -< instructionFunct i
   fromTable (opcodeRegisterWriteEnable fWe <$> opcodeTable) -<< instructionOpcode i
-  
+
 instructionDestinationRegister :: Circuit Instruction RegisterIndex
 instructionDestinationRegister = proc i -> do
   fRe <- fromTable (functDestinationRegister (instructionRd i) <$> functTable) -<< instructionFunct i
