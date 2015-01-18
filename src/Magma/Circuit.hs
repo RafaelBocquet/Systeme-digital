@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, MultiParamTypeClasses, FlexibleInstances, GeneralizedNewtypeDeriving, Arrows, GADTs, DataKinds, PolyKinds, TypeOperators, StandaloneDeriving, TypeFamilies, UndecidableInstances, ViewPatterns, PatternSynonyms, MultiParamTypeClasses, ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, MultiParamTypeClasses, FlexibleInstances, GeneralizedNewtypeDeriving, Arrows, GADTs, DataKinds, PolyKinds, TypeOperators, StandaloneDeriving, TypeFamilies, UndecidableInstances, ViewPatterns, PatternSynonyms, MultiParamTypeClasses, ScopedTypeVariables,LambdaCase #-}
 
 module Magma.Circuit where
 
@@ -105,20 +105,41 @@ addEquation e = do
 
 -- Primitives
 -- We have to use monadic code here
--- TODO : cases to reduce constants
--- ex. and2 (True, a) ~ a
 
 and2, or2, xor2, nand2 :: Circuit (Wire, Wire) Wire
-and2  = Circuit . Kleisli $ \(a, b) -> addEquation (EAnd a b)
-or2   = Circuit . Kleisli $ \(a, b) -> addEquation (EOr a b)
-xor2  = Circuit . Kleisli $ \(a, b) -> addEquation (EXor a b)
-nand2 = Circuit . Kleisli $ \(a, b) -> addEquation (ENand a b)
+and2  = Circuit . Kleisli $ \case
+  (WConst True,a) -> return a
+  (a,WConst True) -> return a
+  (_,WConst False) -> return $ WConst False
+  (WConst False,_) -> return $ WConst False 
+  (a, b) -> addEquation (EAnd a b)
+or2   = Circuit . Kleisli $ \case
+  (WConst False,a) -> return a
+  (a,WConst False) -> return a
+  (WConst True, _) -> return $ WConst True
+  (_, WConst True) -> return $ WConst True
+  (a, b) -> addEquation (EOr a b)
+xor2  = Circuit . Kleisli $ \case
+  (WConst False,a) -> return a
+  (a,WConst False) -> return a
+  (WConst True,WConst True) -> return $ WConst False
+  (a, b) -> addEquation (EXor a b)
+nand2 = Circuit . Kleisli $ \case 
+  (WConst True,WConst True) -> return $ WConst False
+  (WConst False, _) -> return $ WConst True
+  (_,WConst False) -> return $ WConst True
+  (a, b) -> addEquation (ENand a b)
 
 not1 :: Circuit Wire Wire
-not1 = Circuit . Kleisli $ \a -> addEquation (ENot a)
+not1 = Circuit . Kleisli $ \case
+  (WConst b) -> return $ WConst (not b)
+  a -> addEquation (ENot a)
 
 mux3 :: Circuit (Wire, Wire, Wire) Wire
-mux3 = Circuit . Kleisli $ \(a, b, c) -> addEquation (EMux a b c)
+mux3 = Circuit . Kleisli $ \case
+  (WConst True,b,_) -> return b
+  (WConst False,_,c) -> return c
+  (a, b, c) -> addEquation (EMux a b c)
 
 -- These three primitives are more complex, because of the possible cyclic dependencies and of the lack of multiwire equations
 
