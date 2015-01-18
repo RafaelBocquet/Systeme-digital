@@ -69,3 +69,9 @@ parallelSubs :: ParallelAdder n => Circuit (Vec n Wire, Vec n Wire) (Vec n Wire,
 parallelSubs = proc (a,b) -> do
   b' <- bitwise not1 -< b
   parallelAdder' -< (WConst True,a,b')
+
+
+parallelAddSub :: (GenerateVec n, ParallelAdder n) => Circuit (Wire,Vec n Wire,Vec n Wire) (Vec n Wire, Wire)
+parallelAddSub = proc (control,a,b) -> do
+  b' <- bitwise xor2 -< zip (constVec control) b
+  parallelAdder' -< (control,a,b')
