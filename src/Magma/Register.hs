@@ -44,6 +44,21 @@ registerIndex i
 -- registerUnit :: (Registers -> Circuit a (Registers, b)) -> Circuit a b
 -- registerUnit = registerLike
 
+
+-- | binaryToUnary -< r transforms r into its unary representation
+binaryToUnary :: Circuit (Vec n Wire) (Vec (P2 n) Wire)
+binaryToUnary = undefined
+
+
+-- | updateRegister -< (we, v, re, reg) update reg with value v when we and re are 1
+updateSingleRegister :: Circuit ((Wire, V32), (Wire, V32)) V32
+updateSingleRegister = proc ((we, v), (re, oldv)) -> do
+  enable <- and2 -< (we, re)
+  mux -< (enable, v, oldv)
+
 -- | updateRegister -< (we, regs, ri, v) updates the register with index ri in regs with value v when we is 1
 updateRegister :: Circuit (Wire, Registers, RegisterIndex, V32) Registers
-updateRegister = undefined
+updateRegister = proc (we, regs, ri, v) -> do
+  re <- binaryToUnary -< ri
+  bitwise updateSingleRegister -<
+    zip (replicateVec (we, v)) (zip re regs)
