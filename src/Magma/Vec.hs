@@ -45,16 +45,20 @@ instance GenerateVec Z where
 instance GenerateVec n => GenerateVec (S n) where
   generateVec f = VCons <$> f <*> generateVec f
 
--- | 'emptyVec' is the vector of length n with only () as elements
-emptyVec :: GenerateVec n => Vec n ()
-emptyVec = runIdentity (generateVec (Identity ()))
-
 -- | 'indicesVec' is the vector of length n whose i-th element is i
 indicesVec :: GenerateVec n => Vec n Int
 indicesVec = flip evalState 0 . generateVec $ do
   i <- get
   modify (+ 1)
   return i
+
+-- | 'constVec' creates a Vec with the provided element
+constVec :: GenerateVec n => a -> Vec n a
+constVec = runIdentity . generateVec . pure
+
+-- | 'emptyVec' is the vector of length n with only () as elements
+emptyVec :: GenerateVec n => Vec n ()
+emptyVec = constVec ()
 
 -- |Split a vector into two vector
 splitVec :: NatSingleton n => Vec (m + n) a -> (Vec n a, Vec m a)
