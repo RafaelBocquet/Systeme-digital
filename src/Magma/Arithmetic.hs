@@ -43,7 +43,8 @@ parallelAdder :: ParallelAdder n => Circuit (Vec n Wire, Vec n Wire) (Vec n Wire
 parallelAdder = proc (a, b) -> do
   parallelAdder' -< (WConst False, a, b)
 
-class LogParallelAdder n where
+-- | Logarithmic adder : won't be used in practice as it has more gates than the linear one and the simulator execution time is in O(number of gates)
+class LogParallelAdder n where 
   logParallelAdder' :: SNat n -> Circuit (Vec (P2 n) Wire, Vec (P2 n) Wire) ((Vec (P2 n) Wire, Wire), (Vec (P2 n) Wire, Wire))
 instance LogParallelAdder Z where
   logParallelAdder' SZ = proc (a :> _, b :> _) -> do
