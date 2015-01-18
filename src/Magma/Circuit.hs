@@ -3,7 +3,7 @@
 
 module Magma.Circuit where
 
-import Prelude hiding (id, (.), and, or, zip, foldr1, concat)
+import Prelude hiding (id, (.), and, or, zip, foldr1, concat,sequence)
 import Data.Traversable
 import Data.Foldable hiding (and, or)
 import Data.Functor
@@ -13,7 +13,7 @@ import Control.Applicative
 import Control.Arrow
 import Control.Category
 import Data.Functor.Identity
-import Control.Monad.State
+import Control.Monad.State hiding (sequence)
 
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -240,3 +240,8 @@ instance (Default a, Default (Vec n a)) => Default (Vec (S n) a) where
 {- Only DontCares -> defaultValue -}
 fromTable :: (Muxable a, Select n, Default a) => Vec (P2 n) (Maybe a) -> Circuit (Vec n Wire) a
 fromTable a = proc b -> select -< (fmap (maybe defaultValue id) a, b)
+
+bitwise :: Traversable t => Circuit a b -> Circuit (t a) (t b)
+bitwise (runKleisli . unCircuit -> f) =
+  Circuit . Kleisli $
+  \x -> sequence (f <$> x)

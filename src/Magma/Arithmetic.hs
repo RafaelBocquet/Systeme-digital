@@ -63,3 +63,9 @@ instance (NatSingleton (P2 n), Muxable (Vec (P2 n) Wire), LogParallelAdder n) =>
 -- This circuit has a logarithmic depth.
 logParallelAdder32 :: Circuit (Vec (N 32) Wire, Vec (N 32) Wire) ((Vec (N 32) Wire, Wire), (Vec (N 32) Wire, Wire))
 logParallelAdder32 = logParallelAdder' (natSingleton :: SNat (N 5))
+
+
+parallelSubs :: ParallelAdder n => Circuit (Vec n Wire, Vec n Wire) (Vec n Wire,Wire)
+parallelSubs = proc (a,b) -> do
+  b' <- bitwise not1 -< b
+  parallelAdder' -< (WConst True,a,b')
