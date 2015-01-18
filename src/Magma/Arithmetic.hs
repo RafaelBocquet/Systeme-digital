@@ -37,12 +37,12 @@ instance ParallelAdder n => ParallelAdder (S n) where
     (cs, r'') <- parallelAdder' -< (r', as, bs)
     returnA   -< (c `VCons` cs, r'')
 
+-- | 'parallelAdder' is a 'Circuit' performing addition of two n-bit unsigned integers.
+-- This circuit has a linear depth
 parallelAdder :: ParallelAdder n => Circuit (Vec n Wire, Vec n Wire) (Vec n Wire, Wire)
 parallelAdder = proc (a, b) -> do
   parallelAdder' -< (WConst False, a, b)
 
--- It doesn't seem possible not to use SNat...
--- It would be possible once ghc#6018 (Injective type families) is implemented
 class LogParallelAdder n where
   logParallelAdder' :: SNat n -> Circuit (Vec (P2 n) Wire, Vec (P2 n) Wire) ((Vec (P2 n) Wire, Wire), (Vec (P2 n) Wire, Wire))
 instance LogParallelAdder Z where
@@ -58,5 +58,7 @@ instance (NatSingleton (P2 n), Muxable (Vec (P2 n) Wire), LogParallelAdder n) =>
     (s1', r1')              <- mux -< (r1, sr0', sr1')
     returnA -< ((s0 `vappend` s0', r0'), (s1 `vappend` s1', r1'))
 
+-- | 'logParallelAdder32' performs the addition of two 32-bit unsigned integers.
+-- This circuit has a logarithmic depth.
 logParallelAdder32 :: Circuit (Vec (N 32) Wire, Vec (N 32) Wire) ((Vec (N 32) Wire, Wire), (Vec (N 32) Wire, Wire))
 logParallelAdder32 = logParallelAdder' (natSingleton :: SNat (N 5))
