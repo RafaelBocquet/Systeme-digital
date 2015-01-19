@@ -39,7 +39,7 @@ pattern a :> as <- (viewVCons -> (a, as))
 class GenerateVec n where
   -- | 'generateVec' creates a vector of length n with an applicative action
   -- 
-  -- see 'emptyVec' or 'indicesVec' for examples
+  -- see 'replicateVec' or 'indicesVec' for examples
   generateVec :: Applicative f => f a -> f (Vec n a)
 instance GenerateVec Z where
   generateVec f = pure VNil
@@ -48,7 +48,7 @@ instance GenerateVec n => GenerateVec (S n) where
 
 -- | 'replicateVec' a is the vector of length n with only a as elements
 replicateVec :: GenerateVec n => a -> Vec n a
-replicateVec a = runIdentity (generateVec (Identity a))
+replicateVec = runIdentity . generateVec . Identity
 
 -- | 'indicesVec' is the vector of length n whose i-th element is i
 indicesVec :: GenerateVec n => Vec n Int
@@ -89,6 +89,7 @@ instance Functor (Vec n) where
   fmap f VNil         = VNil
   fmap f (VCons a as) = f a `VCons` fmap f as
 instance Foldable (Vec n) where
+  foldMap f VNil         = mempty
   foldMap f (VCons a as) = f a <> foldMap f as
 instance Traversable (Vec n) where
   traverse f VNil         = pure VNil

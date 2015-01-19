@@ -43,6 +43,9 @@ parallelAdder :: ParallelAdder n => Circuit (Vec n Wire, Vec n Wire) (Vec n Wire
 parallelAdder = proc (a, b) -> do
   parallelAdder' -< (WConst False, a, b)
 
+parallelAdder32 :: Circuit (Vec (N 32) Wire, Vec (N 32) Wire) (Vec (N 32) Wire, Wire)
+parallelAdder32 = parallelAdder
+
 -- | Logarithmic adder : won't be used in practice as it has more gates than the linear one and the simulator execution time is in O(number of gates)
 class LogParallelAdder n where 
   logParallelAdder' :: SNat n -> Circuit (Vec (P2 n) Wire, Vec (P2 n) Wire) ((Vec (P2 n) Wire, Wire), (Vec (P2 n) Wire, Wire))
@@ -87,3 +90,6 @@ instance (NatSingleton n, NatSingleton m, GenerateVec n, ParallelAdder (m + n), 
     let alignB = b' `vappendComm` (replicateVec (WConst False) :: Vec n Wire)
     c <- parallelMult -< (as, b)
     arr fst . parallelAdder -< (WConst False `VCons` alignB, WConst False `VCons` c)
+
+parallelMult32 :: Circuit (Vec (N 32) Wire, Vec (N 32) Wire) (Vec (N 63) Wire)
+parallelMult32 = parallelMult
