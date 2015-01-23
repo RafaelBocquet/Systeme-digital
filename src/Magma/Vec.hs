@@ -46,6 +46,15 @@ instance GenerateVec Z where
 instance GenerateVec n => GenerateVec (S n) where
   generateVec f = VCons <$> f <*> generateVec f
 
+fromList :: NatSingleton n => [a] -> Vec n a
+fromList = withNatSingleton fromList'
+
+-- | Explicit 'fromList'
+fromList' :: SNat n -> [a] -> Vec n a
+fromList' SZ     _      = VNil
+fromList' (SS n) (a:as) = a `VCons` fromList' n as
+fromList' (SS n) []     = error "Vec.fromList : list too short"
+
 -- | 'replicateVec' a is the vector of length n with only a as elements
 replicateVec :: GenerateVec n => a -> Vec n a
 replicateVec = runIdentity . generateVec . Identity
@@ -102,8 +111,8 @@ instance Zippable (Vec n) where
 -- @
 --   $(fromList [| [a, b, c] |]) == a `VCons` b `VCons` c `VCons` VNil
 -- @
-fromList :: ExpQ -> ExpQ
-fromList = flip (>>=) $ \case
+inlineVec :: ExpQ -> ExpQ
+inlineVec = flip (>>=) $ \case
   ListE l -> foldr (\a b -> appE (appE (conE 'VCons) (return a)) b) (conE 'VNil) l
   _       -> fail $ "fromList expects a list"
 

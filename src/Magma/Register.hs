@@ -36,7 +36,7 @@ registerIndex i
       let toBinary' 0 = const False <$> [0, 0..]
           toBinary' n = (n `mod` 2 /= 0) : toBinary' (n `div` 2)
           toBinary  n = reverse (take 5 (toBinary' n))
-      fromList (lift (toBinary i))
+      inlineVec$ (lift (toBinary i))
 
 -- | binaryToUnary -< r transforms r into its unary representation
 binaryToUnary :: MonadCircuit m => Circuit m (Vec n (Wire m)) (Vec (P2 n) (Wire m))

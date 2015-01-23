@@ -44,17 +44,17 @@ data Opcode = OpArith
 
 -- |Used to generate lookup tables from the opcode to data needed by the circuit
 opcodeTable :: Vec (N 64) Opcode
-opcodeTable = $(fromList [|
-                          [ OpArith,   OpUnknown, OpJ,       OpJal,     OpBeq,     OpBne,     OpUnknown, OpUnknown -- 00
-                          , OpAddi,    OpAddiu,   OpUnknown, OpUnknown, OpAndi,    OpOri,     OpUnknown, OpLui     -- 08
-                          , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 10
-                          , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 18
-                          , OpUnknown, OpUnknown, OpUnknown, OpLw,      OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 20
-                          , OpUnknown, OpUnknown, OpUnknown, OpSw,      OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 28
-                          , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 30
-                          , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 38
-                          ] |])
-
+opcodeTable = $(inlineVec [|
+                           [ OpArith,   OpUnknown, OpJ,       OpJal,     OpBeq,     OpBne,     OpUnknown, OpUnknown -- 00
+                           , OpAddi,    OpAddiu,   OpUnknown, OpUnknown, OpAndi,    OpOri,     OpUnknown, OpLui     -- 08
+                           , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 10
+                           , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 18
+                           , OpUnknown, OpUnknown, OpUnknown, OpLw,      OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 20
+                           , OpUnknown, OpUnknown, OpUnknown, OpSw,      OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 28
+                           , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 30
+                           , OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown, OpUnknown -- 38
+                           ] |])
+              
 -- |Funct codes of MIPS function instructions we handle
 data Funct = FnAdd
            | FnAddu
@@ -84,17 +84,17 @@ data Funct = FnAdd
 
 -- |Used to generate lookup tables for function instructions
 functTable :: Vec (N 64) Funct
-functTable = $(fromList [|
-                         [ FnSll,     FnUnknown, FnSlr,     FnSra,     FnSllv,    FnSrlv,    FnSrav,    FnUnknown -- 00
-                         , FnJr,      FnUnknown, FnUnknown, FnUnknown, FnSyscall, FnUnknown, FnUnknown, FnUnknown -- 08
-                         , FnMfhi,    FnUnknown, FnMflo,    FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 10
-                         , FnMul,     FnMulu,    FnDiv,     FnDivu,    FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 18
-                         , FnAdd,     FnAddu,    FnSub,     FnSubu,    FnAnd,     FnOr,      FnXor,     FnNor     -- 20
-                         , FnUnknown, FnUnknown, FnSlt,     FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 28
-                         , FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 30
-                         , FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 38
-                         ] |])
-
+functTable = $(inlineVec$ [|
+                           [ FnSll,     FnUnknown, FnSlr,     FnSra,     FnSllv,    FnSrlv,    FnSrav,    FnUnknown -- 00
+                           , FnJr,      FnUnknown, FnUnknown, FnUnknown, FnSyscall, FnUnknown, FnUnknown, FnUnknown -- 08
+                           , FnMfhi,    FnUnknown, FnMflo,    FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 10
+                           , FnMul,     FnMulu,    FnDiv,     FnDivu,    FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 18
+                           , FnAdd,     FnAddu,    FnSub,     FnSubu,    FnAnd,     FnOr,      FnXor,     FnNor     -- 20
+                           , FnUnknown, FnUnknown, FnSlt,     FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 28
+                           , FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 30
+                           , FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown, FnUnknown -- 38
+                           ] |])
+             
 -- |Which opcodes need to write to a register
 opcodeRegisterWriteEnable :: MonadCircuit m => (Wire m) -> Opcode -> Maybe (Wire m)
 opcodeRegisterWriteEnable f OpArith       = Just f
