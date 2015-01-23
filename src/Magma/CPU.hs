@@ -14,4 +14,15 @@ import Control.Category
 import qualified GHC.TypeLits
 
 import Magma.Circuit
+import Magma.Nat
+import Magma.Vec
+import Magma.Instruction
+import Magma.ALU
 
+-- cpu :: MonadCircuit m => Circuit m () ()
+-- cpu =
+--   registerLike $ \(regs, pc, hilo) -> proc () -> do
+--     i         <- readInstruction regs . rom -< pc
+--     aluInput  <- instructionAluInput hilo   -< i
+--     aluOutput <- alu                        -< aluInput
+--     returnA -< ((_, _, aluOMUL aluOutput), ())

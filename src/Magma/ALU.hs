@@ -19,31 +19,33 @@ import Magma.Vec
 import Magma.Register
 import Magma.Arithmetic
 
-type AluOperation = Vec (N 2) Wire
+type AluOperation m = Vec (N 2) (Wire m)
 
-aluAndOperation, aluOrOperation, aluAddOperation, aluMulOperation :: AluOperation
-aluAndOperation = fmap WConst $ False `VCons` False `VCons` VNil
-aluOrOperation  = fmap WConst $ False `VCons` True `VCons` VNil
-aluAddOperation = fmap WConst $ True `VCons` False `VCons` VNil
-aluMulOperation = fmap WConst $ True `VCons` True `VCons` VNil
+aluXorOperation, aluOrOperation, aluAddOperation, aluMulOperation :: MonadCircuit m => AluOperation m
+aluXorOperation = fmap constWire $ False `VCons` False `VCons` VNil
+aluOrOperation  = fmap constWire $ False `VCons` True `VCons` VNil
+aluAddOperation = fmap constWire $ True `VCons` False `VCons` VNil
+aluMulOperation = fmap constWire $ True `VCons` True `VCons` VNil
 
-data AluInput = AluInput
-                { aluOperation   :: AluOperation
-                , aluI1          :: V32 -- ^ first ALU input
-                , aluI2          :: V32 -- ^ second ALU input
-                , aluNegateInput :: Wire -- ^ 1 if the second input should be negated (e.g. for sub)
-                , aluCarryBit    :: Wire -- ^ The initial carry bit for the adder (0 for add, 1 for sub)
-                , aluIMUL        :: Vec (N 64) Wire -- ^ The old (LO HI) register, to be kept unless the operation is a mult
-                }
+data AluInput m = AluInput
+                  { aluOperation    :: AluOperation m
+                  , aluI1           :: V32 m -- ^ first ALU input
+                  , aluI2           :: V32 m -- ^ second ALU input
+                  , aluNegateInput1 :: Wire m -- ^ 1 if the first input should be negated (e.g. for and)
+                  , aluNegateInput2 :: Wire m -- ^ 1 if the second input should be negated (e.g. for sub)
+                  , aluNegateOutput :: Wire m -- ^ 1 if the output should be negated (e.g. for nor)
+                  , aluInitialCarry :: Wire m -- ^ The initial carry bit for the adder (0 for add, 1 for sub)
+                  , aluIMUL         :: Vec (N 64) (Wire m) -- ^ The old (LO HI) register, to be kept unless the operation is a mult
+                  }
 
-data AluOutput = AluOutput
-               { aluO    :: V32 -- ^ The ALU output for operations and, or and add.
-               , aluOMUL :: Vec (N 64) Wire -- ^ The new (LO HI) register, updated if the operation was a mult
-               }
+data AluOutput m = AluOutput
+                   { aluO    :: V32 m -- ^ The ALU output for operations and, or and add.
+                   , aluOMUL :: Vec (N 64) (Wire m) -- ^ The new (LO HI) register, updated if the operation was a mult
+                   }
 
 
 -- Do all operations
 -- aluO <- fromTable $(fromList [| [Just andRes, Just orRes, Just addRes, Nothing] |]) -<< aluOperation aluInput
 -- aluOMul <- fromTable $(fromList [| [Nothing, Nothing, Nothing, Just mulRes] |]) -<< aluOperation aluInput
-alu :: Circuit AluInput AluOutput
+alu :: Circuit m (AluInput m) (AluOutput m)
 alu = undefined

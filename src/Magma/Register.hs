@@ -21,11 +21,11 @@ import Magma.Circuit
 import Magma.Vec
 import Magma.Nat
 
-type Registers     = Vec (N 32) V32
-type RegisterIndex = Vec (N 5) Wire
-type V32           = Vec (N 32) Wire
-
-deriveLift ''Wire
+type Registers m     = Vec (N 32) (V32 m)
+type RegisterIndex m = Vec (N 5) (Wire m)
+type V32 m           = Vec (N 32) (Wire m)
+type PC m            = V32 m
+type V64 m           = Vec (N 64) (Wire m)
 
 -- | Template Haskell to get a 'RegisterIndex' from an Int literal
 -- > $(registerIndex 30) == True `VCons` True `VCons` True `VCons` True `VCons` False
@@ -36,28 +36,21 @@ registerIndex i
       let toBinary' 0 = const False <$> [0, 0..]
           toBinary' n = (n `mod` 2 /= 0) : toBinary' (n `div` 2)
           toBinary  n = reverse (take 5 (toBinary' n))
-      fromList (lift (WConst <$> toBinary i))
-
--- registerFetch :: Circuit (Registers, RegisterIndex) V32
--- registerFetch = select
-
--- registerUnit :: (Registers -> Circuit a (Registers, b)) -> Circuit a b
--- registerUnit = registerLike
-
+      fromList (lift (toBinary i))
 
 -- | binaryToUnary -< r transforms r into its unary representation
-binaryToUnary :: Circuit (Vec n Wire) (Vec (P2 n) Wire)
+binaryToUnary :: MonadCircuit m => Circuit m (Vec n (Wire m)) (Vec (P2 n) (Wire m))
 binaryToUnary = undefined
 
 
--- | updateRegister -< (we, v, re, reg) update reg with value v when we and re are 1
-updateSingleRegister :: Circuit ((Wire, V32), (Wire, V32)) V32
+-- | updateRegister -< ((we, v), (re, reg)) update reg with value v when we and re are 1
+updateSingleRegister :: MonadCircuit m => Circuit m ((Wire m, V32 m), (Wire m, V32 m)) (V32 m)
 updateSingleRegister = proc ((we, v), (re, oldv)) -> do
   enable <- and2 -< (we, re)
   mux -< (enable, v, oldv)
 
 -- | updateRegister -< (we, regs, ri, v) updates the register with index ri in regs with value v when we is 1
-updateRegister :: Circuit (Wire, Registers, RegisterIndex, V32) Registers
+updateRegister :: MonadCircuit m => Circuit m (Wire m, Registers m, RegisterIndex m, V32 m) (Registers m)
 updateRegister = proc (we, regs, ri, v) -> do
   re <- binaryToUnary -< ri
   bitwise updateSingleRegister -<

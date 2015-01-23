@@ -7,6 +7,7 @@ import Magma.Nat
 import Magma.Instruction
 import Magma.Arithmetic
 import Magma.ALU
+import Magma.CPU
 
 import Control.Arrow
 import Data.Traversable
