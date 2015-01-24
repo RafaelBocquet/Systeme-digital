@@ -30,5 +30,5 @@ printV32 = foldMap (\case
 
 main :: IO ()
 main = do
-  putStrLn.printV32.head $ runSimulation parallelMult32 [(fromList (constWire <$> toBinary 3), fromList (constWire <$> toBinary 1))]
+  putStrLn.printV32.head $ runSimulation parallelMult32 [(fromList (constWire <$> toBinary 3), fromList (constWire <$> toBinary 3))]
   return ()

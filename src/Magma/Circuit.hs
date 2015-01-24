@@ -108,7 +108,21 @@ instance (RegisterLike m r, RegisterLike m (Vec n r)) => RegisterLike m (Vec (S 
                            $ \as -> proc i -> do
                              (b :> bs, o) <- f (a `VCons` as) -< i
                              returnA -< (bs, (b, o))                        
-
+instance (RegisterLike m a, RegisterLike m b) => RegisterLike m (a, b) where
+  registerLike f = registerLike
+                   $ \a -> registerLike
+                           $ \b -> proc i -> do
+                             ((a, b), o) <- f (a, b) -< i
+                             returnA -< (b, (a, o))
+instance (RegisterLike m a, RegisterLike m b, RegisterLike m c) => RegisterLike m (a, b, c) where
+  registerLike f = registerLike
+                   $ \a -> registerLike
+                           $ \b -> registerLike
+                                   $ \c -> proc i -> do
+                                     ((a, b, c), o) <- f (a, b, c) -< i
+                                     returnA -< (c, (b, (a, o)))
+  
+  
 class MonadCircuit m => Muxable m a where
   -- | 'mux' is circuit whose output is either its second or third input, depending on its first input.
   mux :: Circuit m (Wire m, a, a) a

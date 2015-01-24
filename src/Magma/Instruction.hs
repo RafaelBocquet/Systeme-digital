@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, MultiParamTypeClasses, FlexibleInstances, GeneralizedNewtypeDeriving, Arrows, GADTs, DataKinds, TypeOperators, TypeFamilies, ViewPatterns, PatternSynonyms #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, MultiParamTypeClasses, FlexibleInstances, GeneralizedNewtypeDeriving, Arrows, GADTs, DataKinds, TypeOperators, TypeFamilies, ViewPatterns, PatternSynonyms, RankNTypes, ScopedTypeVariables #-}
 
 module Magma.Instruction where
 
@@ -96,7 +96,7 @@ functTable = $(inlineVec$ [|
                            ] |])
              
 -- |Which opcodes need to write to a register
-opcodeRegisterWriteEnable :: MonadCircuit m => (Wire m) -> Opcode -> Maybe (Wire m)
+opcodeRegisterWriteEnable :: MonadCircuit m => Wire m -> Opcode -> Maybe (Wire m)
 opcodeRegisterWriteEnable f OpArith       = Just f
 opcodeRegisterWriteEnable f OpUnknown     = Nothing
 opcodeRegisterWriteEnable f op
@@ -118,7 +118,7 @@ opcodeDestinationRegister :: MonadCircuit m => RegisterIndex m -> RegisterIndex 
 opcodeDestinationRegister f rd OpArith                        = Just f
 opcodeDestinationRegister f rd OpUnknown                      = Nothing
 opcodeDestinationRegister f rd op
-  | op `elem` [OpJ, OpJal, OpBeq, OpBne, OpSw]                = Nothing
+  | op `elem` [OpJ, OpBeq, OpBne, OpSw]                       = Nothing
   | op `elem` [OpAddi, OpAddiu, OpAndi, OpOri, OpLui, OpLw]   = Just rd
   | op `elem` [OpJal]                                         = Just (constWire <$> $(registerIndex 31)) -- ra
 
@@ -131,6 +131,27 @@ functDestinationRegister rd fn
   | fn `elem` [FnAdd, FnAddu, FnSub, FnSubu, FnMfhi, FnMflo,
                FnAnd, FnOr, FnXor, FnNor, FnSlt, FnSll,
                FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = Just rd
+
+opcodeRegisterData :: MonadCircuit m => V32 m -> Instruction m -> Vec (N 28) (Wire m) -> AluOutput m -> Opcode -> Maybe (V32 m)
+opcodeRegisterData f i pc out OpArith          = Just f
+opcodeRegisterData f i pc out OpUnknown        = Nothing
+opcodeRegisterData f i pc out OpJal            = Just (constWire False `VCons` constWire False `VCons` (pc `vappend` replicateVec (constWire False)))
+opcodeRegisterData f i pc out op
+  | op `elem` [OpJ, OpBeq, OpBne, OpSw]        = Nothing
+  | op `elem` [OpAddi, OpAddiu, OpAndi, OpOri] = Just (aluO out)
+  | op `elem` [OpLui]                          = Just (instructionImmediate i `vappend` replicateVec (constWire False))
+  | op `elem` [OpLw]                           = undefined
+
+functRegisterData :: forall m. MonadCircuit m => AluOutput m -> Funct -> Maybe (V32 m)
+functRegisterData out FnUnknown                = Nothing
+-- functRegisterData out FnSyscall                = Just (constWire <$> $(registerIndex 2)) -- v0
+functRegisterData out fn
+  | fn `elem` [FnMul, FnMulu, FnDiv, FnDivu, FnJr]   = Nothing
+  | fn `elem` [FnAdd, FnAddu, FnSub, FnSubu, FnAnd, FnOr, FnXor, FnNor] = Just (aluO out)
+  | fn `elem` [FnMflo] = let lo :| hi = aluOMUL out in Just lo
+  | fn `elem` [FnMfhi] = let (lo :: Vec (N 32) (Wire m)) :| hi = aluOMUL out in Just hi
+  | fn `elem` [FnSlt, FnSll, FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = undefined
+
 
 -- |Which opcodes need to write to memory
 opcodeMemoryWriteEnable :: MonadCircuit m => Opcode -> Maybe (Wire m)
@@ -195,7 +216,7 @@ functAluInput2 i fn
   | fn `elem` [FnDiv, FnDivu]                               = undefined -- TODO
   | fn `elem` [FnSll, FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = undefined -- TODO
 
-opcodeAluNegateInput1 :: MonadCircuit m => (Wire m) -> Opcode -> Maybe (Wire m)
+opcodeAluNegateInput1 :: MonadCircuit m => Wire m -> Opcode -> Maybe (Wire m)
 opcodeAluNegateInput1 f OpArith                             = Just f
 opcodeAluNegateInput1 f OpUnknown                           = Nothing
 opcodeAluNegateInput1 f op
@@ -214,7 +235,7 @@ functAluNegateInput1 fn
   | fn `elem` [FnDiv, FnDivu]                               = undefined -- TODO
   | fn `elem` [FnSll, FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = undefined -- TODO
 
-opcodeAluNegateInput2 :: MonadCircuit m => (Wire m) -> Opcode -> Maybe (Wire m)
+opcodeAluNegateInput2 :: MonadCircuit m => Wire m -> Opcode -> Maybe (Wire m)
 opcodeAluNegateInput2 f OpArith                             = Just f
 opcodeAluNegateInput2 f OpUnknown                           = Nothing
 opcodeAluNegateInput2 f op
@@ -234,7 +255,7 @@ functAluNegateInput2 fn
   | fn `elem` [FnDiv, FnDivu]                               = undefined -- TODO
   | fn `elem` [FnSll, FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = undefined -- TODO
 
-opcodeAluNegateOutput :: MonadCircuit m => (Wire m) -> Opcode -> Maybe (Wire m)
+opcodeAluNegateOutput :: MonadCircuit m => Wire m -> Opcode -> Maybe (Wire m)
 opcodeAluNegateOutput f OpArith                             = Just f
 opcodeAluNegateOutput f OpUnknown                           = Nothing
 opcodeAluNegateOutput f op
@@ -254,7 +275,7 @@ functAluNegateOutput fn
   | fn `elem` [FnDiv, FnDivu]                               = undefined -- TODO
   | fn `elem` [FnSll, FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = undefined -- TODO
 
-opcodeAluInitialCarry :: MonadCircuit m => (Wire m) -> Opcode -> Maybe (Wire m)
+opcodeAluInitialCarry :: MonadCircuit m => Wire m -> Opcode -> Maybe (Wire m)
 opcodeAluInitialCarry f OpArith                             = Just f
 opcodeAluInitialCarry f OpUnknown                           = Nothing
 opcodeAluInitialCarry f op
@@ -274,6 +295,11 @@ functAluInitialCarry fn
   | fn `elem` [FnSll, FnSlr, FnSra, FnSllv, FnSrlv, FnSrav] = undefined -- TODO
 
 
+opcodeAluPc :: MonadCircuit m => Wire m -> Opcode -> Maybe (Wire m)
+opcodeAluPc = undefined
+
+functAluPc :: MonadCircuit m => Funct -> Maybe (Wire m)
+functAluPc = undefined
 
 -- |'Instruction' contains the different parts of a MIPS instruction
 data Instruction m = Instruction
@@ -310,6 +336,11 @@ instructionDestinationRegister = proc i -> do
   fRe <- fromTable (functDestinationRegister (instructionRd i) <$> functTable) -<< instructionFunct i
   fromTable (opcodeDestinationRegister fRe (instructionRd i) <$> opcodeTable) -<< instructionOpcode i
 
+instructionRegisterData :: MonadCircuit m => Vec (N 28) (Wire m) -> AluOutput m -> Circuit m (Instruction m) (V32 m)
+instructionRegisterData pc out = proc i -> do
+  fRd <- fromTable (functRegisterData out <$> functTable) -<< instructionFunct i
+  fromTable (opcodeRegisterData fRd i pc out <$> opcodeTable) -<< instructionOpcode i
+
 instructionMemoryWriteEnable :: MonadCircuit m => Circuit m (Instruction m) (Wire m)
 instructionMemoryWriteEnable = proc i -> do
   fromTable (opcodeMemoryWriteEnable <$> opcodeTable) -< instructionOpcode i
@@ -331,3 +362,8 @@ instructionAluInput hilo = proc i -> do
   fAluInitialCarry <- fromTable (functAluInitialCarry <$> functTable)                    -< instructionFunct i
   aluInitialCarry  <- fromTable (opcodeAluInitialCarry fAluInitialCarry <$> opcodeTable) -<< instructionOpcode i
   returnA -< AluInput aluOperation aluInput1 aluInput2 aluNegateInput1 aluNegateInput2 aluNegateOutput aluInitialCarry hilo
+
+instructionAluPc :: MonadCircuit m => Circuit m (Instruction m) (Wire m)
+instructionAluPc = proc i -> do
+  fAluPc <- fromTable (functAluPc <$> functTable) -< instructionFunct i
+  fromTable (opcodeAluPc fAluPc <$> opcodeTable) -<< instructionOpcode i
